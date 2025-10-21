@@ -1,37 +1,96 @@
+# STM32Relay
 
-This directory is intended for project header files.
+A PlatformIO library for communicating with STM32 microcontrollers over UART/I2C interfaces. This library provides a simple and reliable way to control digital and analog I/O operations on STM32 devices remotely.
 
-A header file is a file containing C declarations and macro definitions
-to be shared between several project source files. You request the use of a
-header file in your project source file (C, C++, etc) located in `src` folder
-by including it, with the C preprocessing directive `#include'.
+## Features
 
-```src/main.c
+- Digital Input/Output operations
+- Analog Read/Write functionality
+- PPM (Pulse Position Modulation) signal generation
+- Supports both UART and I2C communication
+- Built-in parity checking for reliable communication
+- Compatible with common STM32 pins (PA, PB, PC series)
 
-#include "header.h"
+## Installation
 
-int main (void)
-{
- ...
+This library can be used in PlatformIO projects. To install:
+
+1. Create a new PlatformIO project
+2. Add this library to your `platformio.ini` dependencies
+3. Include the header file in your project
+
+## Usage
+
+### Basic Setup
+
+```cpp
+#include <STM32Relay.h>
+
+// Initialize relay with UART communication
+STM32Relay relay(STM32Relay::UART, TX_PIN, RX_PIN);
+
+void setup() {
+    // Begin communication at specified baud rate
+    relay.begin(115200);
 }
 ```
 
-Including a header file produces the same results as copying the header file
-into each source file that needs it. Such copying would be time-consuming
-and error-prone. With a header file, the related declarations appear
-in only one place. If they need to be changed, they can be changed in one
-place, and programs that include the header file will automatically use the
-new version when next recompiled. The header file eliminates the labor of
-finding and changing all the copies as well as the risk that a failure to
-find one copy will result in inconsistencies within a program.
+### Digital Operations
 
-In C, the convention is to give header files names that end with `.h'.
+```cpp
+// Digital Write
+relay.digitalWrite(Relay::PA5, HIGH);
 
-Read more about using header files in official GCC documentation:
+// Digital Read
+bool value = relay.digitalRead(Relay::PB1);
+```
 
-* Include Syntax
-* Include Operation
-* Once-Only Headers
-* Computed Includes
+### Analog Operations
 
-https://gcc.gnu.org/onlinedocs/cpp/Header-Files.html
+```cpp
+// Analog Write (PWM)
+relay.analogWrite(Relay::PA0, 128); // 0-255 value
+
+// Analog Read
+int value = relay.analogRead(Relay::PA1); // Returns 12-bit value (0-4095)
+```
+
+### PPM Signal Generation
+
+```cpp
+// Generate PPM signal with specified pulse width
+relay.writePPM(Relay::PB0, 1500); // 1500 microseconds
+```
+
+## Pin Mapping
+
+The library provides easy-to-use pin definitions for STM32 microcontrollers:
+
+- PA0-PA15
+- PB0-PB15
+- PC13-PC15
+- Alternative pin functions supported
+
+## Communication Protocol
+
+The library implements a robust communication protocol with:
+- Sync bit verification
+- Parity checking
+- Command verification
+- Timeout handling
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+[...]
+
+## Author
+
+Ipuuuu
+
+## Version History
+
+- Initial Release
