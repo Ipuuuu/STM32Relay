@@ -96,6 +96,23 @@ uint8_t STM32Relay::recvByte(uint32_t timeout){
     return uart_port->read(); //return byte
 }
 
+STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t value){
+    COMMAND_TYPE cmd;
+    if(value == 1){
+        cmd = COMMAND_TYPE::CMD_SET_PIN_MODE_OUTPUT;
+    }
+    else{
+        cmd = COMMAND_TYPE::CMD_SET_PIN_MODE_INPUT;
+    }
+
+    //build bytes
+    uint8_t byte1 = buildCommandByte(cmd);
+    uint8_t byte2 = buildPinByte(pin);
+
+    //send
+    sendByte(byte1);
+    sendByte(byte2);
+}
 
 STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value){
     COMMAND_TYPE cmd;

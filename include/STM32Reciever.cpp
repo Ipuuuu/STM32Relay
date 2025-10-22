@@ -52,35 +52,35 @@ bool verifyParity(uint8_t byte);
 uint8_t buildPinByte(uint8_t pinNumber);
 uint8_t calculateParity(int data, uint8_t numBits);
 
-void setup(){
-    Serial1.begin(115200);
-    currentState = IDLE;
-}
+// void setup(){
+//     Serial1.begin(115200);
+//     currentState = IDLE;
+// }
 
-void loop(){
-    if(Serial1.available()){
-        uint8_t byte = Serial1.read();
+// void loop(){
+//     if(Serial1.available()){
+//         uint8_t byte = Serial1.read();
 
-        switch(currentState){
-            case IDLE:
-                handleIdleState(byte);
-                break;
-            case READING_PIN:
-                handleReadingPinState(byte);
-                break;
-            case READING_VALUE_1:
-                handleReadingValue1State(byte);
-                break;
-            case READING_VALUE_2:
-                handleReadingValue2State(byte);
-                break;
-            case EXECUTE:
-                executeCommand();
-                currentState = IDLE;
-                break;
-        }
-    }
-}
+//         switch(currentState){
+//             case IDLE:
+//                 handleIdleState(byte);
+//                 break;
+//             case READING_PIN:
+//                 handleReadingPinState(byte);
+//                 break;
+//             case READING_VALUE_1:
+//                 handleReadingValue1State(byte);
+//                 break;
+//             case READING_VALUE_2:
+//                 handleReadingValue2State(byte);
+//                 break;
+//             case EXECUTE:
+//                 executeCommand();
+//                 currentState = IDLE;
+//                 break;
+//         }
+//     }
+// }
 
 void handleIdleState(uint8_t byte){
     if((byte & SYNC_BIT) == 0) //verfify if cmd byte
