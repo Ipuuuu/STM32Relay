@@ -4,7 +4,7 @@
 
 using namespace Relay;
 
-STM32Relay relay(STM32::UART, STM32Relay:D2, STM32Relay::D3); //Double check pins
+STM32Relay relay(STM32::UART, STM32Relay:D8, STM32Relay::D9); //Double check pins
 
 void setup(){
     Serial.begin(115200);

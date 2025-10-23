@@ -76,7 +76,7 @@ comm_Type(type), txPin(tx), rxPin(rx){
 
 
 STM32Relay&  STM32Relay::begin(int32_t baud){
-    uart_port->begin(baud);
+    uart_port->begin(baud,rxPin,txPin);
     return (*this);
 }
 
