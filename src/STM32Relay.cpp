@@ -1,5 +1,6 @@
 #include "STM32Relay.h"
 
+
 //helper functions definition
 uint8_t calculateParity(int data, uint8_t numBits){
     uint8_t count = 0;
@@ -67,7 +68,7 @@ void buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4){
 }
 
 
-STM32Relay::STM32Relay(commType type, uint8_t tx, uint8_t rx):
+STM32Relay::STM32Relay(commType type, uint8_t rx, uint8_t tx):
 comm_Type(type), txPin(tx), rxPin(rx){
     if(type == UART){
         uart_port = &Serial1;
@@ -109,6 +110,10 @@ STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t value){
     uint8_t byte1 = buildCommandByte(cmd);
     uint8_t byte2 = buildPinByte(pin);
 
+    Serial.println("Sending pinmode command bytes:");
+    Serial.print("Byte1: ");Serial.println(byte1, BIN);
+    Serial.print("Byte2: ");Serial.println(byte2, BIN);
+
     //send
     sendByte(byte1);
     sendByte(byte2);
@@ -128,6 +133,10 @@ STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value){
     //build bytes
     uint8_t byte1 = buildCommandByte(cmd);
     uint8_t byte2 = buildPinByte(pin);
+
+    Serial.println("Sending digital write command bytes:");
+    Serial.print("Byte1: ");Serial.println(byte1, BIN);
+    Serial.print("Byte2: ");Serial.println(byte2, BIN);
 
     //send
     sendByte(byte1);
