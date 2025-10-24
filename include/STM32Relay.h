@@ -34,7 +34,7 @@ bool verifyParity(uint8_t byte);
 //building cmd bytes
 uint8_t buildCommandByte(enum COMMAND_TYPE cmd);
 uint8_t buildPinByte(uint8_t pinNumber);
-int buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4);
+void buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4);
   
 
 class STM32Relay{
@@ -121,8 +121,8 @@ public:
     PIN_A9 = PB1,
 
     // Counts
-    NUM_DIGITAL_PINS  = 35,
-    NUM_ANALOG_INPUTS = 10
+    STM_NUM_DIGITAL_PINS  = 35,
+    STM_NUM_ANALOG_INPUTS = 10
     } pinName;
 
     enum commType{
@@ -135,32 +135,30 @@ private:
     commType comm_Type; //UART or I2C
 
 public:
-    STM32Relay(commType type, uint8_t tx, uint8_t rx);
+    STM32Relay(commType type, uint8_t rx, uint8_t tx);
+    
+    // low-level comm
+    STM32Relay&  begin(int32_t baud) ;
+    STM32Relay&  sendByte(uint8_t byte) ;
+    uint8_t recvByte(uint32_t timeout) ;
 
-private: // low-level comm
-
-    STM32Relay&  begin(int32_t baud);
-    STM32Relay&  sendByte(uint8_t byte);
-    uint8_t recvByte(uint32_t timeout) const;
-
-public: //high-level commands
-
+    //high-level commands
     STM32Relay&  digitalWrite(uint8_t pin, uint8_t value);
-    bool digitalRead(uint8_t pin) const;
+    bool digitalRead(uint8_t pin) ;
     STM32Relay&  analogWrite(uint8_t pin, uint8_t value);
-    int analogRead(uint8_t pin) const;
+    int analogRead(uint8_t pin) ;
     STM32Relay&  writePPM(uint8_t pin, uint32_t microseconds);
     STM32Relay&  pinMode(uint8_t pin, uint8_t value);
 
-}
+};
 
 // namespace
 
 namespace Relay{
 
     struct Pin{
-        uint8_t number;
-        Pin(uint8_t n) : number(n){}
+        uint16_t number;
+        Pin(uint16_t n) : number(n){}
     };
 
     //STM32 Pin definitions

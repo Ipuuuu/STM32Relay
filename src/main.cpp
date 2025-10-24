@@ -1,21 +1,23 @@
 #include <Arduino.h>
-#include <STM32Relay.h>
+#include "STM32Relay.h"
 #define LED D10
 
 using namespace Relay;
 
-STM32Relay relay(STM32::UART, STM32Relay:D8, STM32Relay::D9); //Double check pins
+STM32Relay myRelay(STM32Relay::UART, D8, D9); 
 
 void setup(){
     Serial.begin(115200);
-    relay.begin(115200);
+    myRelay.begin(115200);
+    Serial.println("Deneyap STM32 Relay Starting...");
 
-    relay.pinMode(STM32Relay::PB5, OUTPUT);
+    myRelay.pinMode(STM32Relay::PB5, OUTPUT);
 }
 
 void loop(){
-    relay.digitalWrite(STM32Relay::PB5, HIGH);
+    myRelay.digitalWrite(STM32Relay::PB5, HIGH);
     delay(500);
-    relay.digitalWrite(STM32Relay::PB5, LOW);
+    myRelay.digitalWrite(STM32Relay::PB5, LOW);
     delay(500);
 }
+

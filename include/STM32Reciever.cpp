@@ -33,6 +33,7 @@ enum State{
     EXECUTE //execute and respond
 };
 
+HardwareSerial Serial1(PA10, PA9); //RX, TX
 uint8_t currentState = IDLE;
 uint8_t commandType;
 uint8_t pinNumber;
@@ -52,35 +53,35 @@ bool verifyParity(uint8_t byte);
 uint8_t buildPinByte(uint8_t pinNumber);
 uint8_t calculateParity(int data, uint8_t numBits);
 
-// void setup(){
-//     Serial1.begin(115200);
-//     currentState = IDLE;
-// }
+void setup(){
+    Serial1.begin(115200);
+    currentState = IDLE;
+}
 
-// void loop(){
-//     if(Serial1.available()){
-//         uint8_t byte = Serial1.read();
+void loop(){
+    if(Serial1.available()){
+        uint8_t byte = Serial1.read();
 
-//         switch(currentState){
-//             case IDLE:
-//                 handleIdleState(byte);
-//                 break;
-//             case READING_PIN:
-//                 handleReadingPinState(byte);
-//                 break;
-//             case READING_VALUE_1:
-//                 handleReadingValue1State(byte);
-//                 break;
-//             case READING_VALUE_2:
-//                 handleReadingValue2State(byte);
-//                 break;
-//             case EXECUTE:
-//                 executeCommand();
-//                 currentState = IDLE;
-//                 break;
-//         }
-//     }
-// }
+        switch(currentState){
+            case IDLE:
+                handleIdleState(byte);
+                break;
+            case READING_PIN:
+                handleReadingPinState(byte);
+                break;
+            case READING_VALUE_1:
+                handleReadingValue1State(byte);
+                break;
+            case READING_VALUE_2:
+                handleReadingValue2State(byte);
+                break;
+            case EXECUTE:
+                executeCommand();
+                currentState = IDLE;
+                break;
+        }
+    }
+}
 
 void handleIdleState(uint8_t byte){
     if((byte & SYNC_BIT) == 0) //verfify if cmd byte
@@ -172,35 +173,34 @@ void executeCommand(){
         case COMMAND_TYPE::CMD_D_W_HIGH:
             digitalWrite(pinNumber, HIGH);
             break;
-        case COMMAND_TYPE::CMD_D_R:
-            {
-                uint16_t readValue = digitalRead(pinNumber);
-                sendDigitalReadResponse(pinNumber, readValue);
-            }
+        case COMMAND_TYPE::CMD_D_R: {
+            uint16_t readValue = digitalRead(pinNumber);
+            sendDigitalReadResponse(pinNumber, readValue);
             break;
-        case COMMAND_TYPE::CMD_A_W:
+        }
+        case COMMAND_TYPE::CMD_A_W: {
             uint8_t value8bit = value >> 4;  // Convert 12-bit to 8-bit
-            analogWrite(pinNumber, value);
+            analogWrite(pinNumber, value8bit);
             break;
-        case COMMAND_TYPE::CMD_A_R:
-            {
-                uint16_t readValue = analogRead(pinNumber);
-                sendAnalogReadResponse(pinNumber, readValue);
-            }
+        }
+        case COMMAND_TYPE::CMD_A_R: {
+            uint16_t readValue = analogRead(pinNumber);
+            sendAnalogReadResponse(pinNumber, readValue);
             break;
+        }
         case COMMAND_TYPE::CMD_SET_PPM:
             // Implement PPM setting logic here
-            //writePWM(pinNumber, value);
+            // writePWM(pinNumber, value);
             break;
         default:
             // Unknown command
-            currentState = IDLE;
             break;
     }
 
-    //return to idle
+    // return to idle
     currentState = IDLE;
 }
+
 
 uint8_t calculateParity(int data, uint8_t numBits){
     uint8_t count = 0;

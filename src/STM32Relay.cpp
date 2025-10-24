@@ -46,7 +46,7 @@ uint8_t buildPinByte(uint8_t pinNumber){
     return byte;
 }
 
-void STM32Relay::buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4){
+void buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4){
     //byte 3
     byte3 = 0; //continiation byte
     byte3 = byte3 | ((value >> 6) & 0b00111111); // sets byte3 to be upper 6bits of value
@@ -75,17 +75,17 @@ comm_Type(type), txPin(tx), rxPin(rx){
 }
 
 
-STM32Relay&  STM32Relay::begin(int32_t baud){
+STM32Relay&  STM32Relay::begin(int32_t baud) {
     uart_port->begin(baud,rxPin,txPin);
     return (*this);
 }
 
-STM32Relay&  STM32Relay::sendByte(uint8_t byte){
+STM32Relay&  STM32Relay::sendByte(uint8_t byte) {
     uart_port->write(byte);
     return (*this);
 }
 
-uint8_t STM32Relay::recvByte(uint32_t timeout){
+uint8_t STM32Relay::recvByte(uint32_t timeout) {
     uint32_t startTime = millis();
 
     while(!uart_port->available()){
@@ -112,6 +112,8 @@ STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t value){
     //send
     sendByte(byte1);
     sendByte(byte2);
+
+    return (*this);
 }
 
 STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value){
@@ -130,9 +132,11 @@ STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value){
     //send
     sendByte(byte1);
     sendByte(byte2);
+
+    return (*this);
 }
 
-bool STM32Relay::digitalRead(uint8_t pin){
+bool STM32Relay::digitalRead(uint8_t pin) {
     COMMAND_TYPE cmd = COMMAND_TYPE::CMD_D_R;
     uint8_t byte1 = buildCommandByte(cmd);
     uint8_t byte2 = buildPinByte(pin);
@@ -155,13 +159,13 @@ bool STM32Relay::digitalRead(uint8_t pin){
     }
 
     //extract reply code last 2 bits
-    uint8_t replyCode = replyByte & 0b00000011;
+    uint8_t replyCode = replyByte2 & 0b00000011;
 
     return (replyCode == REPLY_D_HIGH);
 }
 
 STM32Relay&  STM32Relay::analogWrite(uint8_t pin, uint8_t value){
-    uint8_t byte1 = buildComandByte(CMD_A_W);
+    uint8_t byte1 = buildCommandByte(CMD_A_W);
     uint8_t byte2 = buildPinByte(pin);
 
     //convert and scale 8-bit to 12bits
@@ -228,7 +232,7 @@ int STM32Relay::analogRead(uint8_t pin){
 STM32Relay&  STM32Relay::writePPM(uint8_t pin, uint32_t microseconds){
     uint8_t byte1 = buildCommandByte(CMD_SET_PPM);
     uint8_t byte2 = buildPinByte(pin);
-    int8_t byte3, byte4;
+    uint8_t byte3, byte4;
 
     buildValueBytes(microseconds, byte3, byte4);
 
