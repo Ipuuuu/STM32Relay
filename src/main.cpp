@@ -19,8 +19,8 @@ void setup(){
 void loop(){
     myRelay.digitalWrite(STM32Relay::PB5, HIGH);
     Serial.println("sent HIGH...");
-    delay(500);
+    delay(200);
     myRelay.digitalWrite(STM32Relay::PB5, LOW);
     Serial.println("sent LOW...");
-    delay(500);
+    delay(200);
 }
