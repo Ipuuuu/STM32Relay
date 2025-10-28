@@ -31,19 +31,47 @@ uint8_t buildCommandByte(enum COMMAND_TYPE cmd){
     if(parityBit == 1){ // set parity bit
         byte = byte | PARITY_BIT;
     }
+
+    // static int debugCounter = 0;
+
+    // Serial.println("returning command byte...");
+    // Serial.print("Cmd Byte"); Serial.print(debugCounter % 2); Serial.print(": "); Serial.println(byte, BIN);
+
+    // debugCounter++;
+
     return byte;
 }
 
 uint8_t buildPinByte(uint8_t pinNumber){
     uint8_t byte = 0; //continiation byte
 
+    // Serial.print("continuation byte: ");
+    // Serial.println(byte, BIN);
+
+
     byte = byte | (pinNumber & 0b00111111);
+
+    // Serial.print("pinNum byte: ");
+    // Serial.println(byte, BIN);
 
     uint8_t parityBit = calculateParity((pinNumber & 0b00111111), 6);
     
     if(parityBit == 1){
         byte = byte | PARITY_BIT;
     }
+
+    // Serial.print("added parity byte: ");
+    // Serial.println(byte, BIN);
+    // Serial.print("added parity byte in HEX: ");
+    // Serial.println(byte, HEX);
+
+    // static int debugCounter = 0;
+
+    // Serial.println("returning pin byte...");
+    // Serial.print("Pin Byte"); Serial.print(debugCounter % 2); Serial.print(": "); Serial.println(byte, BIN);
+
+    // debugCounter++;
+
     return byte;
 }
 
@@ -77,7 +105,13 @@ comm_Type(type), txPin(tx), rxPin(rx){
 
 
 STM32Relay&  STM32Relay::begin(int32_t baud) {
-    uart_port->begin(baud,rxPin,txPin);
+    uart_port->begin(baud, SERIAL_8N1,rxPin,txPin);
+
+    // Clear any startup garbage
+    while(uart_port->available()) {
+        uart_port->read();
+    }
+    
     return (*this);
 }
 
@@ -99,10 +133,12 @@ uint8_t STM32Relay::recvByte(uint32_t timeout) {
 
 STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t value){
     COMMAND_TYPE cmd;
-    if(value == 1){
+    // Serial.print("pinMode value: "); Serial.println(value);
+
+    if(value == 0x03){
         cmd = COMMAND_TYPE::CMD_SET_PIN_MODE_OUTPUT;
     }
-    else{
+    else if(value == 0x01){
         cmd = COMMAND_TYPE::CMD_SET_PIN_MODE_INPUT;
     }
 
