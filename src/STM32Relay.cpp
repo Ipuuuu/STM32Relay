@@ -146,9 +146,9 @@ STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t value){
     uint8_t byte1 = buildCommandByte(cmd);
     uint8_t byte2 = buildPinByte(pin);
 
-    Serial.println("Sending pinmode command bytes:");
-    Serial.print("Byte1: ");Serial.println(byte1, BIN);
-    Serial.print("Byte2: ");Serial.println(byte2, BIN);
+    // Serial.println("Sending pinmode command bytes:");
+    // Serial.print("Byte1: ");Serial.println(byte1, BIN);
+    // Serial.print("Byte2: ");Serial.println(byte2, BIN);
 
     //send
     sendByte(byte1);
@@ -170,9 +170,9 @@ STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value){
     uint8_t byte1 = buildCommandByte(cmd);
     uint8_t byte2 = buildPinByte(pin);
 
-    Serial.println("Sending digital write command bytes:");
-    Serial.print("Byte1: ");Serial.println(byte1, BIN);
-    Serial.print("Byte2: ");Serial.println(byte2, BIN);
+    // Serial.println("Sending digital write command bytes:");
+    // Serial.print("Byte1: ");Serial.println(byte1, BIN);
+    // Serial.print("Byte2: ");Serial.println(byte2, BIN);
 
     //send
     sendByte(byte1);
@@ -260,9 +260,20 @@ int STM32Relay::analogRead(uint8_t pin){
     }
 
     //verify sync bit-pin byte
-    if((reply2 & SYNC_BIT) == 0){
+    if((reply2 & SYNC_BIT) != 0){
         return -1; //invalid response
     }
+
+    //verify sync bit for byte3 (should be continuation)
+    if((reply3 & SYNC_BIT) != 0){
+        return -1;
+    }
+
+    //verify sync bit for byte4 (should be continuation)  
+    if((reply4 & SYNC_BIT) != 0){
+        return -1;
+    }
+    
     //verify parity-pin byte
     if( !(verifyParity(reply2)) ){
         return -1; //invalid response
@@ -279,6 +290,9 @@ int STM32Relay::analogRead(uint8_t pin){
 
     //reconstruct 12 bit value
     uint16_t value = ((reply3 & 0b00111111) << 6 ) | (reply4 & 0b00111111);
+
+    // Serial.print("Analog read 12-bit value: ");
+    // Serial.println(value, DEC);
 
     return value;
 }
