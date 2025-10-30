@@ -240,6 +240,15 @@ int STM32Relay::analogRead(uint8_t pin){
     uint8_t reply3 = recvByte(1000);
     uint8_t reply4 = recvByte(1000);
 
+    Serial.print("reply1: ");
+    Serial.println(reply1, BIN);
+    Serial.print("reply2: ");
+    Serial.println(reply2, BIN);
+    Serial.print("reply3: ");
+    Serial.println(reply3, BIN);
+    Serial.print("reply4: ");
+    Serial.println(reply4, BIN);
+
     //verify response
     //verify sync bit-cmd byte
     if((reply1 & SYNC_BIT) == 0){
