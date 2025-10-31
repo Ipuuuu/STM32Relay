@@ -193,6 +193,10 @@ bool STM32Relay::digitalRead(uint8_t pin) {
     uint8_t replyByte1 = recvByte(1000);
     uint8_t replyByte2 = recvByte(1000);
 
+    Serial.print("replyByte1: ");Serial.println(replyByte1, BIN);
+    Serial.print("replyByte2: ");Serial.println(replyByte2, BIN);
+
+
     //verify sync bit
     if((replyByte1 & SYNC_BIT) == 0){
         return -1; //invalid response
@@ -204,7 +208,7 @@ bool STM32Relay::digitalRead(uint8_t pin) {
     }
 
     //extract reply code last 2 bits
-    uint8_t replyCode = replyByte2 & 0b00000011;
+    uint8_t replyCode = replyByte1 & 0b00000011;
 
     return (replyCode == REPLY_D_HIGH);
 }

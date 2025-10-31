@@ -20,11 +20,13 @@ void setup(){
 
     myRelay.pinMode(STM32Relay::PB5, OUTPUT);
     myRelay.pinMode(STM32Relay::PB6, INPUT);
+    myRelay.digitalWrite(STM32Relay::PB6, HIGH);// input pull-up
 
 
 }
 
 void loop(){
+    //digitalwrite
     // myRelay.analogWrite(STM32Relay::PB5, brightness);
     // Serial.println("sent HIGH...");
     // delay(200);
@@ -32,6 +34,7 @@ void loop(){
     // Serial.println("sent LOW...");
     // delay(200);
 
+    //analogwrite
     // myRelay.analogWrite(STM32Relay::PB5, brightness);
     // brightness = brightness + fadeAmt;
     // if(brightness == 0 || brightness == 255){
@@ -39,7 +42,8 @@ void loop(){
     // }
     // delay(30);
 
-    // sensorValue = myRelay.analogRead(STM32Relay::PA12);
+    // //analogread
+    // sensorValue = myRelay.analogRead(STM32Relay::PA1);
     // Serial.print("Analog Read PA0: ");
     // Serial.println(sensorValue);
 
@@ -49,10 +53,11 @@ void loop(){
     // Serial.print("Analog Write PB5: ");
     // Serial.println(brightness);
 
+    //digitalread
     btnState = myRelay.digitalRead(STM32Relay::PB6);
     Serial.print("Digital Read PB6: ");
     Serial.println(btnState);  
-    if(btnState == HIGH){
+    if(btnState == LOW){
         myRelay.digitalWrite(STM32Relay::PB5, HIGH);    }
     else{
         myRelay.digitalWrite(STM32Relay::PB5, LOW);
