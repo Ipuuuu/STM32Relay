@@ -1,8 +1,9 @@
 #include "STM32Relay.h"
 
+using namespace Relay;
 
 //helper functions definition
-uint8_t calculateParity(int data, uint8_t numBits){
+uint8_t Relay::calculateParity(int data, uint8_t numBits){
     uint8_t count = 0;
     for(uint8_t i = 0; i < numBits; i++){
         if(data & (1 << i)){ //check if bit is set
@@ -12,7 +13,7 @@ uint8_t calculateParity(int data, uint8_t numBits){
     return count % 2; //returns 1 if odd, 0 if even
 }
 
-bool verifyParity(uint8_t byte){
+bool Relay::verifyParity(uint8_t byte){
     uint8_t parityBit = (byte >> 6) & 1; //get parity bit
     uint8_t dataBits = byte & 0b00111111; // get data bits
     uint8_t calculatedParity = calculateParity(dataBits, 6);
@@ -21,7 +22,7 @@ bool verifyParity(uint8_t byte){
 }
 
 //building cmd bytes
-uint8_t buildCommandByte(enum COMMAND_TYPE cmd){
+uint8_t Relay::buildCommandByte(enum COMMAND_TYPE cmd){
     uint8_t byte = SYNC_BIT; //sets bit 7
 
     byte = byte | (cmd & 0b00000111); //adds cmd to lower 3 bits
@@ -42,7 +43,7 @@ uint8_t buildCommandByte(enum COMMAND_TYPE cmd){
     return byte;
 }
 
-uint8_t buildPinByte(uint8_t pinNumber){
+uint8_t Relay::buildPinByte(uint8_t pinNumber){
     uint8_t byte = 0; //continiation byte
 
     // Serial.print("continuation byte: ");
@@ -75,7 +76,7 @@ uint8_t buildPinByte(uint8_t pinNumber){
     return byte;
 }
 
-void buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4){
+void Relay::buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4){
     //byte 3
     byte3 = 0; //continiation byte
     byte3 = byte3 | ((value >> 6) & 0b00111111); // sets byte3 to be upper 6bits of value
@@ -199,12 +200,12 @@ bool STM32Relay::digitalRead(uint8_t pin) {
 
     //verify sync bit
     if((replyByte1 & SYNC_BIT) == 0){
-        return -1; //invalid response
+        return false; //invalid response
     }
 
     //verify parity
     if( !(verifyParity(replyByte1)) ){
-        return -1; //invalid response
+        return false; //invalid response
     }
 
     //extract reply code last 2 bits
@@ -244,14 +245,14 @@ int STM32Relay::analogRead(uint8_t pin){
     uint8_t reply3 = recvByte(1000);
     uint8_t reply4 = recvByte(1000);
 
-    Serial.print("reply1: ");
-    Serial.println(reply1, BIN);
-    Serial.print("reply2: ");
-    Serial.println(reply2, BIN);
-    Serial.print("reply3: ");
-    Serial.println(reply3, BIN);
-    Serial.print("reply4: ");
-    Serial.println(reply4, BIN);
+    // Serial.print("reply1: ");
+    // Serial.println(reply1, BIN);
+    // Serial.print("reply2: ");
+    // Serial.println(reply2, BIN);
+    // Serial.print("reply3: ");
+    // Serial.println(reply3, BIN);
+    // Serial.print("reply4: ");
+    // Serial.println(reply4, BIN);
 
     //verify response
     //verify sync bit-cmd byte
