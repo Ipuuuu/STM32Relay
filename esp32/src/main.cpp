@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "BoardConfig.h"
 #include "STM32Relay.h"
 #define LED D10
 
