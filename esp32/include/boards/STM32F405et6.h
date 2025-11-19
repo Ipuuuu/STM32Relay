@@ -2,7 +2,8 @@
 #include "../Pin.h"
 
 namespace Relay {
-    // STM32F407VET6 Pin definitions (LQFP100 package)
+    // STM32F407VET6 Pin definitions likely Wrong physical pins
+    // COMEBACK TO FIX THE PIN DEFINITIONS BASED ON ACTUAL BOARD LAYOUT
     
     // Port A
     const Pin PA0(0);
