@@ -25,7 +25,7 @@ bool Relay::verifyParity(uint8_t byte){
 /*
     Calculate odd parity (returns 1 if odd number of 1s, 0 if even)
  */
-uint8_t Relay::calcOddParity(uint8_t data, uint8_t numBits) {
+uint8_t Relay::calcOddParity(int data, uint8_t numBits) {
     uint8_t count = 0;
     for(uint8_t i = 0; i < numBits; i++) {
         if(data & (1 << i)) {
@@ -38,7 +38,7 @@ uint8_t Relay::calcOddParity(uint8_t data, uint8_t numBits) {
 /*
     Calculate even parity (returns 0 if odd number of 1s, 1 if even)
  */
-uint8_t Relay::calcEvenParity(uint8_t data, uint8_t numBits) {
+uint8_t Relay::calcEvenParity(int data, uint8_t numBits) {
     return !calcOddParity(data, numBits);
 }
 
@@ -315,32 +315,13 @@ bool Relay::correctPacketErrors(uint8_t* packet, uint8_t numBytes) {
 uint8_t Relay::buildPinByte(uint8_t pinNumber){
     uint8_t byte = 0; //continiation byte
 
-    // Serial.print("continuation byte: ");
-    // Serial.println(byte, BIN);
-
-
     byte = byte | (pinNumber & 0b00111111);
-
-    // Serial.print("pinNum byte: ");
-    // Serial.println(byte, BIN);
 
     uint8_t parityBit = calculateParity((pinNumber & 0b00111111), 6);
     
     if(parityBit == 1){
         byte = byte | PARITY_BIT;
     }
-
-    // Serial.print("added parity byte: ");
-    // Serial.println(byte, BIN);
-    // Serial.print("added parity byte in HEX: ");
-    // Serial.println(byte, HEX);
-
-    // static int debugCounter = 0;
-
-    // Serial.println("returning pin byte...");
-    // Serial.print("Pin Byte"); Serial.print(debugCounter % 2); Serial.print(": "); Serial.println(byte, BIN);
-
-    // debugCounter++;
 
     return byte;
 }
@@ -419,6 +400,8 @@ STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t value){
     // Send
     sendByte(packet[0]);
     sendByte(packet[1]);
+
+    return (*this);
 }
 
 STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value){

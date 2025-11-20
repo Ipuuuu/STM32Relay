@@ -2,6 +2,7 @@
 #define STM32_RECEIVER_H
 
 #include <Arduino.h>
+#include <HardwareSerial.h>
 
 #define SYNC_BIT 0b10000000
 #define PARITY_BIT 0b01000000
@@ -35,12 +36,12 @@ enum State{
     EXECUTE //execute and respond
 };
 
-// HardwareSerial  Serial1(PA9, PA10); //RX, TX
-uint8_t currentState = IDLE;
-uint8_t commandType;
-uint8_t pinNumber;
-uint16_t value;
-uint8_t byte3, byte4;
+extern HardwareSerial  Serial1;
+extern uint8_t currentState;
+extern uint8_t commandType;
+extern uint8_t pinNumber;
+extern uint16_t value;
+extern uint8_t byte3, byte4;
 
 
 uint8_t calculateParity(int data, uint8_t numBits); // (returns 1 if odd, 0 if even)
