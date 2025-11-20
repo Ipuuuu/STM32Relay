@@ -38,7 +38,7 @@ void loop(){
     //analogwrite
     // myRelay.analogWrite(STM32Relay::PB5, brightness);
     // brightness = brightness + fadeAmt;
-    // if(brightness == 0 || brightness == 255){
+    // if(brightness == 0 || brightness == 255){5y
     //     fadeAmt = -fadeAmt; 
     // }
     // delay(30);

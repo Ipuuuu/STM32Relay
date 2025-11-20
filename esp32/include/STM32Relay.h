@@ -35,8 +35,21 @@ enum REPLY_TYPE{
 uint8_t calculateParity(int data, uint8_t numBits);
 bool verifyParity(uint8_t byte);
 
-//building cmd bytes
-uint8_t buildCommandByte(enum COMMAND_TYPE cmd);
+uint8_t calcEvenParity(int data, uint8_t numBits);
+uint8_t calcOddParity(int data, uint8_t numBits);
+uint8_t generateIntermediateByte(uint8_t originalByte, bool isFirstByte);
+void generateIntermediateBytes(uint8_t* original, uint8_t* intermediate, uint8_t numBytes);
+uint8_t calculateP1(uint8_t* intermediate, uint8_t numBytes);
+uint8_t calculateP2(uint8_t* intermediate, uint8_t numBytes);
+uint8_t calculateP3(uint8_t* intermediate, uint8_t numBytes);
+uint8_t calculateECCBits(uint8_t* intermediate, uint8_t numBytes);
+bool checkByteParity(uint8_t byte);
+int8_t findCorruptedByte(uint8_t* packet, uint8_t numBytes);
+int8_t locateCorruptedBit(uint8_t* intermediate, uint8_t numBytes, uint8_t corruptedByteIdx, uint8_t receivedECC);
+bool correctPacketErrors(uint8_t* packet, uint8_t numBytes);
+
+//building cmd bytes WITH error correction bits
+uint8_t buildCommandByte(enum COMMAND_TYPE cmd, uint8_t* packetBytes, uint8_t numBytes);
 uint8_t buildPinByte(uint8_t pinNumber);
 void buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4);
   
