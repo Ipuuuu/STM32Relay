@@ -2,30 +2,18 @@
 
 using namespace Relay;
 
-//helper functions definition
-uint8_t Relay::calculateParity(int data, uint8_t numBits){
-    uint8_t count = 0;
-    for(uint8_t i = 0; i < numBits; i++){
-        if(data & (1 << i)){ //check if bit is set
-            count++;
-        }
-    }
-    return count % 2; //returns 1 if odd, 0 if even
-}
+uint8_t Relay::xiBits = 0;
 
+//helper functions definition
 bool Relay::verifyParity(uint8_t byte){
     uint8_t parityBit = (byte >> 6) & 1; //get parity bit
     uint8_t dataBits = byte & 0b00111111; // get data bits
-    uint8_t calculatedParity = calculateParity(dataBits, 6);
+    uint8_t calculatedParity = calcParity(dataBits, 6);
 
     return (calculatedParity == parityBit);
 }
 
-// ECC Functions
-/*
-    Calculate odd parity (returns 1 if odd number of 1s, 0 if even)
- */
-uint8_t Relay::calcOddParity(int data, uint8_t numBits) {
+uint8_t Relay::calcParity(int data, uint8_t numBits) {
     uint8_t count = 0;
     for(uint8_t i = 0; i < numBits; i++) {
         if(data & (1 << i)) {
@@ -35,76 +23,114 @@ uint8_t Relay::calcOddParity(int data, uint8_t numBits) {
     return count % 2; // 1 if odd, 0 if even
 }
 
-/*
-    Calculate even parity (returns 0 if odd number of 1s, 1 if even)
- */
+// ECC Functions
+//Calculate odd parity (returns XOR of odd bits startig from LSB)
+ 
+uint8_t Relay::calcOddParity(int data, uint8_t numBits) {
+    // XOR together every other bit starting from the LSB (bit positions 0,2,4,...)
+    uint8_t parity = 0;
+    for (uint8_t i = 0; i < numBits; i += 2) {
+        parity ^= (uint8_t)((data >> i) & 1);
+    }
+    return parity;
+}
+
+//Calculate even parity  (returns XOR of even bits startig from LSB)
 uint8_t Relay::calcEvenParity(int data, uint8_t numBits) {
-    return !calcOddParity(data, numBits);
+    // XOR together every other bit starting from the LSB (bit positions 1,3,5,...)
+    uint8_t parity = 0;
+    for (uint8_t i = 1; i < numBits; i += 2) {
+        parity ^= (uint8_t)((data >> i) & 1);
+    }
+    return parity;
 }
 
 // STEP 2: Generate Intermediate Bytes
 
 /*
     Generate intermediate byte representation for ECC calculation
-    Bit 0: odd parity of data bits
-    Bit 1: even parity of data bits
-    Bits 2-7: data bits (including original parity bit if present)
+    Format: [odd][even][x1][x2][x3][c][c][c]
+    Bit 7: odd parity of ccc bits
+    Bit 6: even parity of ccc bits
+    Bits 3-5: x1, x2, x3 (xi parity bits from pin and value bytes)
+    Bits 0-2: ccc (the three command bits)
+    
+    For firstByte: includes x1,x2,x3 bits from xiData
  */
-uint8_t Relay::generateIntermediateByte(uint8_t originalByte, bool isFirstByte) {
+uint8_t Relay::generateIntermediateByte(uint8_t originalByte, bool isFirstByte, uint8_t xiData) {
     uint8_t intermediate = 0;
     
     if(isFirstByte) {
-        // For byte1: 1xeeeccc -> extract ccc (bits 0-2) and x1,x2,x3 (bits 3-5)
-        uint8_t dataBits = originalByte & 0b00111111; // bits 0-5
+        // For byte1: 1xeeeccc -> extract ccc (bits 0-2)
+        uint8_t ccc = originalByte & 0b00000111; // bits 0-2 (the three c bits)
         
-        // Bit 0: odd parity of bits 0-2 (ccc)
-        uint8_t ccc = originalByte & 0b00000111;
-        intermediate |= calcOddParity(ccc, 3);
+        // Bit 7: odd parity of bits 0-2 (ccc)
+        intermediate |= (calcOddParity(ccc, 3) << 7);
         
-        // Bit 1: even parity of bits 0-2 (ccc)
-        intermediate |= (calcEvenParity(ccc, 3) << 1);
+        // Bit 6: even parity of bits 0-2 (ccc) 
+        intermediate |= (calcEvenParity(ccc, 3) << 6);
         
-        // Bits 2-7: copy bits 0-5 from original (x1,x2,x3,c,c,c)
-        intermediate |= (dataBits << 2);
+        // Bits 5-3: x1, x2, x3 from xiBits (the three xi parity bits from pin and value bytes)
+        intermediate |= (xiData << 3) ;
+        
+        // Bits 2-0: copy ccc (the three command bits)
+        intermediate |= ccc ;
     }
     else {
         // For byte2-4: 0xpppppp or 0xvvvvvv -> extract 6 data bits
         uint8_t dataBits = originalByte & 0b00111111;
         
-        // Bit 0: odd parity of data bits
-        intermediate |= calcOddParity(dataBits, 6);
+        // Bit 7: odd parity of data bits
+        intermediate |= (calcOddParity(dataBits, 6) << 7);
         
-        // Bit 1: even parity of data bits
-        intermediate |= (calcEvenParity(dataBits, 6) << 1);
+        // Bit 6: even parity of data bits
+        intermediate |= (calcEvenParity(dataBits, 6) << 6);
         
-        // Bits 2-7: copy all 6 data bits plus original parity bit
-        uint8_t parityBit = (originalByte >> 6) & 1;
-        intermediate |= (parityBit << 2);
-        intermediate |= (dataBits << 3);
+        // Bits 5-0: copy all 6 data bits
+        intermediate |= dataBits;
     }
     
     return intermediate;
 }
 
-/*
-    Generate all 4 intermediate bytes from original packet
- */
+// Generate all 4 intermediate bytes from original packet
+ 
 void Relay::generateIntermediateBytes(uint8_t* original, uint8_t* intermediate, uint8_t numBytes) {
     for(uint8_t i = 0; i < numBytes; i++) {
-        intermediate[i] = generateIntermediateByte(original[i], i == 0);
+        if(i == 0) {
+            // First byte: pass xiBits
+            intermediate[i] = generateIntermediateByte(original[i], true, xiBits);
+        } else {
+            // Other bytes: no xiBits
+            intermediate[i] = generateIntermediateByte(original[i], false, 0);
+        }
+    }
+}
+
+/*
+    Generate all 4 intermediate bytes from original packet with explicit xiData
+    This version is used by the receiver for error correction where xiData should be 0
+ */
+void Relay::generateIntermediateBytes(uint8_t* original, uint8_t* intermediate, uint8_t numBytes, uint8_t xiData) {
+    for(uint8_t i = 0; i < numBytes; i++) {
+        if(i == 0) {
+            // First byte: pass xiData (for receiver, this is 0)
+            intermediate[i] = generateIntermediateByte(original[i], true, xiData);
+        } else {
+            // Other bytes: no xiBits
+            intermediate[i] = generateIntermediateByte(original[i], false, 0);
+        }
     }
 }
 // STEP 3: Calculate ECC Bits (p1, p2, p3)
 
-/*
-    Calculate p1: parity of bits [0,1,2,3] from all bytes
- */
+//Calculate p1: parity of bits [7,6,5,4] from all bytes
 uint8_t Relay::calculateP1(uint8_t* intermediate, uint8_t numBytes) {
     uint8_t bitCount = 0;
     
     for(uint8_t byteIdx = 0; byteIdx < numBytes; byteIdx++) {
         for(uint8_t bitIdx = 0; bitIdx <= 3; bitIdx++) {
-            if(intermediate[byteIdx] & (1 << bitIdx)) {
+            if(intermediate[byteIdx] & (1 << (7 -bitIdx))) {
                 bitCount++;
             }
         }
@@ -113,12 +139,10 @@ uint8_t Relay::calculateP1(uint8_t* intermediate, uint8_t numBytes) {
     return bitCount % 2;
 }
 
-/*
-    Calculate p2: parity of bits [0,1,4,5] from all bytes
- */
+//Calculate p2: parity of bits [7,6,3,2] from all bytes
 uint8_t Relay::calculateP2(uint8_t* intermediate, uint8_t numBytes) {
     uint8_t bitCount = 0;
-    uint8_t bitsToCheck[] = {0, 1, 4, 5};
+    uint8_t bitsToCheck[] = {7, 6, 3, 2};
     
     for(uint8_t byteIdx = 0; byteIdx < numBytes; byteIdx++) {
         for(uint8_t i = 0; i < 4; i++) {
@@ -132,15 +156,14 @@ uint8_t Relay::calculateP2(uint8_t* intermediate, uint8_t numBytes) {
     return bitCount % 2;
 }
 
-/*
-     Calculate p3: parity of bits [0,2,4,6] from all bytes
- */
+//Calculate p3: parity of bits [5,3,1] from all bytes
+ 
 uint8_t Relay::calculateP3(uint8_t* intermediate, uint8_t numBytes) {
     uint8_t bitCount = 0;
-    uint8_t bitsToCheck[] = {0, 2, 4, 6};
+    uint8_t bitsToCheck[] = {5, 3, 1};
     
     for(uint8_t byteIdx = 0; byteIdx < numBytes; byteIdx++) {
-        for(uint8_t i = 0; i < 4; i++) {
+        for(uint8_t i = 0; i < 3; i++) {
             uint8_t bitIdx = bitsToCheck[i];
             if(intermediate[byteIdx] & (1 << bitIdx)) {
                 bitCount++;
@@ -151,26 +174,27 @@ uint8_t Relay::calculateP3(uint8_t* intermediate, uint8_t numBytes) {
     return bitCount % 2;
 }
 
-/*
-    Calculate all three ECC bits and return as 3-bit value (e2 e1 e0)
- */
+//Calculate all three ECC bits and return as 3-bit value (e2 e1 e0)
 uint8_t Relay::calculateECCBits(uint8_t* intermediate, uint8_t numBytes) {
     uint8_t ecc = 0;
     
-    ecc |= calculateP1(intermediate, numBytes);      // e0 (bit 0)
+    ecc |= (calculateP1(intermediate, numBytes) << 2); // e0 (bit 2)
     ecc |= (calculateP2(intermediate, numBytes) << 1); // e1 (bit 1)
-    ecc |= (calculateP3(intermediate, numBytes) << 2); // e2 (bit 2)
+    ecc |= calculateP3(intermediate, numBytes);      // e2 (bit 0)
+
+
     
     return ecc;
 }
 
 //building cmd bytes WITH error correction bits
 uint8_t Relay::buildCommandByte(enum COMMAND_TYPE cmd, uint8_t* packetBytes, uint8_t numBytes) {
+    
     // First, build the packet without ECC (eee = 000)
     uint8_t byte1 = SYNC_BIT | (cmd & 0b00000111);
     packetBytes[0] = byte1;
     
-    // Generate intermediate bytes
+    // Generate intermediate bytes (this will use and include xiBits in the first byte)
     uint8_t intermediate[4] = {0};
     generateIntermediateBytes(packetBytes, intermediate, numBytes);
     
@@ -182,19 +206,20 @@ uint8_t Relay::buildCommandByte(enum COMMAND_TYPE cmd, uint8_t* packetBytes, uin
     
     // Calculate and set parity bit for the complete byte1
     uint8_t dataBits = byte1 & 0b00111111;
-    uint8_t parityBit = calculateParity(dataBits, 6);
+    uint8_t parityBit = calcOddParity(dataBits, 6);
     if(parityBit == 1) {
         byte1 |= PARITY_BIT;
     }
+    
+    // Clear xiBits after use
+    xiBits = 0;
     
     return byte1;
 }
 
 // STEP 5: Receiver - Error Detection and Correction
 
-/*
-    Check individual byte parity (x0, x1, x2, x3)
- */
+// Check individual byte parity (x0, x1, x2, x3)
 bool Relay::checkByteParity(uint8_t byte) {
     return verifyParity(byte);
 }
@@ -222,18 +247,19 @@ int8_t Relay::locateCorruptedBit(uint8_t* intermediate, uint8_t numBytes, uint8_
     uint8_t calculatedECC = calculateECCBits(intermediate, numBytes);
     
     // Extract individual p values
-    bool p1Fail = ((receivedECC & 0b001) != (calculatedECC & 0b001));
+    bool p3Fail = ((receivedECC & 0b001) != (calculatedECC & 0b001));
     bool p2Fail = ((receivedECC & 0b010) != (calculatedECC & 0b010));
-    bool p3Fail = ((receivedECC & 0b100) != (calculatedECC & 0b100));
+    bool p1Fail = ((receivedECC & 0b100) != (calculatedECC & 0b100));
     
     // Determine bit position using intersection logic
-    uint8_t possibleBits = 0xFF; // Start with all bits possible
+    uint8_t possibleBits = 0xFF; // Start with all (255)bits possible
     
     // p1 check: bits [0,1,2,3] vs [4,5,6,7]
     if(p1Fail) {
-        possibleBits &= 0b11110000; // bits 4-7
-    } else {
         possibleBits &= 0b00001111; // bits 0-3
+        
+    } else {
+        possibleBits &= 0b11110000; // bits 4-7
     }
     
     // p2 check: bits [0,1,4,5] vs [2,3,6,7]
@@ -243,11 +269,11 @@ int8_t Relay::locateCorruptedBit(uint8_t* intermediate, uint8_t numBytes, uint8_
         possibleBits &= 0b11001100; // bits 2,3,6,7
     }
     
-    // p3 check: bits [0,2,4,6] vs [1,3,5,7]
+    // p3 check: bits [0,2,4] vs [1,3,5]
     if(p3Fail) {
-        possibleBits &= 0b01010101; // bits 0,2,4,6
+        possibleBits &= 0b00101010; // bits 1,3,5
     } else {
-        possibleBits &= 0b10101010; // bits 1,3,5,7
+        possibleBits &= 0b00010101; // bits 0,2,4
     }
     
     // Find which bit is set in possibleBits
@@ -269,9 +295,16 @@ bool Relay::correctPacketErrors(uint8_t* packet, uint8_t numBytes) {
     // Extract received ECC bits from byte1
     uint8_t receivedECC = (packet[0] >> 3) & 0b111;
     
-    // Generate intermediate bytes
+    // First pass: generate intermediate bytes with xiData = 0 to check byte parities
     uint8_t intermediate[4] = {0};
-    generateIntermediateBytes(packet, intermediate, numBytes);
+    generateIntermediateBytes(packet, intermediate, numBytes, 0);
+    
+    // Extract the xi bits from the first intermediate byte (bits 5-3)
+    // These are the parity bits that were sent with the packet
+    uint8_t receivedXiBits = (intermediate[0] >> 3) & 0b111; // ISSUE HERE
+    
+    // Second pass: regenerate intermediate bytes with the received xi bits
+    generateIntermediateBytes(packet, intermediate, numBytes, receivedXiBits);
     
     // Calculate ECC and compare
     uint8_t calculatedECC = calculateECCBits(intermediate, numBytes);
@@ -299,8 +332,8 @@ bool Relay::correctPacketErrors(uint8_t* packet, uint8_t numBytes) {
     // Flip the corrupted bit
     packet[corruptedByteIdx] ^= (1 << corruptedBitIdx);
     
-    // Verify correction by recalculating
-    generateIntermediateBytes(packet, intermediate, numBytes);
+    // Verify correction by recalculating with received xi bits
+    generateIntermediateBytes(packet, intermediate, numBytes, receivedXiBits);
     calculatedECC = calculateECCBits(intermediate, numBytes);
     
     if(receivedECC == calculatedECC) {
@@ -317,7 +350,9 @@ uint8_t Relay::buildPinByte(uint8_t pinNumber){
 
     byte = byte | (pinNumber & 0b00111111);
 
-    uint8_t parityBit = calculateParity((pinNumber & 0b00111111), 6);
+    uint8_t parityBit = calcOddParity((pinNumber & 0b00111111), 6);
+
+    xiBits = xiBits & (parityBit << 2); //set x1_Bits for later use
     
     if(parityBit == 1){
         byte = byte | PARITY_BIT;
@@ -330,7 +365,8 @@ void Relay::buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4){
     //byte 3
     byte3 = 0; //continiation byte
     byte3 = byte3 | ((value >> 6) & 0b00111111); // sets byte3 to be upper 6bits of value
-    uint8_t parityBit = calculateParity(byte3, 6);
+    uint8_t parityBit = calcOddParity(byte3, 6);
+    xiBits = xiBits & (parityBit << 1);//set x2_Bits for later use
 
     if(parityBit == 1){
         byte3 = byte3 | PARITY_BIT;
@@ -339,7 +375,8 @@ void Relay::buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4){
     //byte4
     byte4= 0; //continiation byte
     byte4 = byte4 | (value & 0b00111111); // sets byte4 to be lower 6bits of value
-    parityBit = calculateParity(byte4, 6);
+    parityBit = calcOddParity(byte4, 6);
+    xiBits = xiBits & (parityBit << 0); //set x3_Bits for later use
 
     if(parityBit == 1){
         byte4 = byte4 | PARITY_BIT;

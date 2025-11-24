@@ -31,14 +31,17 @@ enum REPLY_TYPE{
     REPLY_RETRANSMIT = 3
 };
 
-//helper functions
-uint8_t calculateParity(int data, uint8_t numBits);
-bool verifyParity(uint8_t byte);
+extern uint8_t xiBits;
 
+//helper functions
+bool verifyParity(uint8_t byte);
+uint8_t calcParity(int data, uint8_t numBits);
 uint8_t calcEvenParity(int data, uint8_t numBits);
 uint8_t calcOddParity(int data, uint8_t numBits);
-uint8_t generateIntermediateByte(uint8_t originalByte, bool isFirstByte);
+uint8_t generateIntermediateByte(uint8_t originalByte, bool isFirstByte, uint8_t xiData);
 void generateIntermediateBytes(uint8_t* original, uint8_t* intermediate, uint8_t numBytes);
+void generateIntermediateBytes(uint8_t* original, uint8_t* intermediate, uint8_t numBytes, uint8_t xiData);
+
 uint8_t calculateP1(uint8_t* intermediate, uint8_t numBytes);
 uint8_t calculateP2(uint8_t* intermediate, uint8_t numBytes);
 uint8_t calculateP3(uint8_t* intermediate, uint8_t numBytes);
