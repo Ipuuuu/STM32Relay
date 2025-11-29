@@ -1,6 +1,6 @@
 #include "STM32Relay.h"
 
-using namespace Relay;
+namespace Relay{
 
 uint8_t Relay::xiBits = 0;
 
@@ -241,7 +241,7 @@ int8_t Relay::findCorruptedByte(uint8_t* packet, uint8_t numBytes) {
     Locate corrupted bit within a byte using p1, p2, p3
     Returns bit index (0-7) or -1 if can't determine
  */
-int8_t Relay::locateCorruptedBit(uint8_t* intermediate, uint8_t numBytes, uint8_t corruptedByteIdx,
+int8_t Relay::locateCorruptedBit(uint8_t intermediate[], uint8_t numBytes, uint8_t corruptedByteIdx,
                           uint8_t receivedECC) {
     // Recalculate ECC
     uint8_t calculatedECC = calculateECCBits(intermediate, numBytes);
@@ -251,6 +251,10 @@ int8_t Relay::locateCorruptedBit(uint8_t* intermediate, uint8_t numBytes, uint8_
     bool p2Fail = ((receivedECC & 0b010) != (calculatedECC & 0b010));
     bool p1Fail = ((receivedECC & 0b100) != (calculatedECC & 0b100));
     
+    // locate the bit within the corrupted byte
+    // We need to look at the CORRUPTED BYTE's intermediate representation
+    // uint8_t corruptedIntermediate = intermediate[corruptedByteIdx];
+
     // Determine bit position using intersection logic
     uint8_t possibleBits = 0xFF; // Start with all (255)bits possible
     
@@ -271,9 +275,11 @@ int8_t Relay::locateCorruptedBit(uint8_t* intermediate, uint8_t numBytes, uint8_
     
     // p3 check: bits [0,2,4] vs [1,3,5]
     if(p3Fail) {
-        possibleBits &= 0b00101010; // bits 1,3,5
+        // possibleBits &= 0b00101010; // bits 1,3,5
+        possibleBits &= 0b10101010; // bits 1,3,5,7
     } else {
-        possibleBits &= 0b00010101; // bits 0,2,4        
+        // possibleBits &= 0b00010101; // bits 0,2,4   
+        possibleBits &= 0b01010101; // bits 0,2,4,6     
     }
     
     // Find which bit is set in possibleBits
@@ -334,6 +340,11 @@ bool Relay::correctPacketErrors(uint8_t* packet, uint8_t numBytes) {
     }
     
     int8_t corruptedBitIdx = locateCorruptedBit(intermediate, numBytes, corruptedByteIdx, receivedECC);
+
+    Serial.print("Corrupted Byte Index: ");
+    Serial.println(corruptedByteIdx);
+    Serial.print("Corrupted Bit Index: ");
+    Serial.println(corruptedBitIdx);
     
     if(corruptedBitIdx == -1) {
         // Couldn't locate bit
@@ -596,3 +607,4 @@ STM32Relay&  STM32Relay::writePPM(uint8_t pin, uint32_t microseconds){
 
 
 
+}

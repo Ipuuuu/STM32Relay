@@ -104,9 +104,7 @@ STM32Relay myRelay(STM32Relay::UART, D8, D9);
 // ============================================================================
 
 void printBinary(uint8_t byte) {
-    for(int i = 7; i >= 0; i--) {
-        Serial.print((byte >> i) & 1);
-    }
+    Serial.print(byte, BIN);
 }
 
 void printPacket(uint8_t* packet, uint8_t numBytes, const char* label) {
