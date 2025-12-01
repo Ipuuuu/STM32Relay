@@ -4,24 +4,13 @@
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include "Pin.h"
+#include "ECC.h"
 
 #define SYNC_BIT 0b10000000
 #define PARITY_BIT 0b01000000
 
 // namespace
 namespace Relay{
-
-//cmd bits
-enum COMMAND_TYPE{
-    CMD_D_W_LOW = 0,
-    CMD_D_W_HIGH = 1,
-    CMD_D_R = 2,
-    CMD_A_W = 3,
-    CMD_A_R = 4,
-    CMD_SET_PPM = 5,
-    CMD_SET_PIN_MODE_INPUT = 6,
-    CMD_SET_PIN_MODE_OUTPUT = 7
-};
 
 //reply bits
 enum REPLY_TYPE{
@@ -31,31 +20,9 @@ enum REPLY_TYPE{
     REPLY_RETRANSMIT = 3
 };
 
-extern uint8_t xiBits;
+void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin);
+void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uint16_t value);
 
-//helper functions
-bool verifyParity(uint8_t byte);
-uint8_t calcParity(int data, uint8_t numBits);
-uint8_t calcEvenParity(int data, uint8_t numBits);
-uint8_t calcOddParity(int data, uint8_t numBits);
-uint8_t generateIntermediateByte(uint8_t originalByte, bool isFirstByte, uint8_t xiData);
-void generateIntermediateBytes(uint8_t* original, uint8_t* intermediate, uint8_t numBytes);
-void generateIntermediateBytes(uint8_t* original, uint8_t* intermediate, uint8_t numBytes, uint8_t xiData);
-
-uint8_t calculateP1(uint8_t* intermediate, uint8_t numBytes);
-uint8_t calculateP2(uint8_t* intermediate, uint8_t numBytes);
-uint8_t calculateP3(uint8_t* intermediate, uint8_t numBytes);
-uint8_t calculateECCBits(uint8_t* intermediate, uint8_t numBytes);
-bool checkByteParity(uint8_t byte);
-int8_t findCorruptedByte(uint8_t* packet, uint8_t numBytes);
-int8_t locateCorruptedBit(uint8_t* intermediate, uint8_t numBytes, uint8_t corruptedByteIdx, uint8_t receivedECC);
-bool correctPacketErrors(uint8_t* packet, uint8_t numBytes);
-
-//building cmd bytes WITH error correction bits
-uint8_t buildCommandByte(enum COMMAND_TYPE cmd, uint8_t* packetBytes, uint8_t numBytes);
-uint8_t buildPinByte(uint8_t pinNumber);
-void buildValueBytes(int value, uint8_t &byte3, uint8_t &byte4);
-  
 
 class STM32Relay{
 public:
@@ -158,9 +125,11 @@ public:
     STM32Relay(commType type, uint8_t rx, uint8_t tx);
     
     // low-level comm
-    STM32Relay&  begin(int32_t baud) ;
-    STM32Relay&  sendByte(uint8_t byte) ;
-    uint8_t recvByte(uint32_t timeout) ;
+    STM32Relay&  begin(int32_t baud);
+    STM32Relay&  sendByte(uint8_t byte);
+    STM32Relay& sendPacket(const Packet& packet); 
+    uint8_t recvByte(uint32_t timeout);
+    bool recvPacket(Packet& packet, uint32_t timeout, int expectedBytes);
 
     //high-level commands
     STM32Relay&  digitalWrite(uint8_t pin, uint8_t value);

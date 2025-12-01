@@ -1,0 +1,14 @@
+{
+    "name": "RelayECC",
+    "version": "1.0.0",
+    "description": "Error Correction Code library for relay communication protocol",
+    "keywords": ["ecc", "error-correction", "relay", "communication"],
+    "authors": {
+        "name": "Immaculata Umoh"
+    },
+    "frameworks": ["arduino", "espidf"],
+    "platforms": "*",
+    "build": {
+        "flags": ["-O3"]
+    }
+}
