@@ -84,12 +84,17 @@ STM32Relay&  STM32Relay::begin(int32_t baud) {
     while(uart_port->available()) {
         uart_port->read();
     }
-    
+    delay(100);  //give STM32 time to initialize
+
     return (*this);
 }
 
 STM32Relay&  STM32Relay::sendByte(uint8_t byte) {
+    // Serial.print("TX: 0b");
+    // Serial.println(byte, BIN);  
+    
     uart_port->write(byte);
+    uart_port->flush();
     return (*this);
 }
 

@@ -27,10 +27,11 @@ namespace Relay {
         int requiresData() const {
             switch (command) {
                 case CMD_A_W:
-                case CMD_SET_PPM:
                     return 2;
-                case CMD_SET_PIN_MODE:
+                case CMD_SET_PPM:
                     return 1;
+                case CMD_SET_PIN_MODE:
+                    return 0;
                 default:
                     return 0;
             }
