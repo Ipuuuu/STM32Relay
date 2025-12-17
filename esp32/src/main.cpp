@@ -45,8 +45,7 @@ void setup(){
     Serial.println("Deneyap-STM32 Relay Starting...");
 
     myRelay.pinMode(STM32Relay::PB5, OUTPUT);
-    myRelay.pinMode(STM32Relay::PB6, INPUT);
-    myRelay.digitalWrite(STM32Relay::PB6, HIGH);// input pull-up
+    myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
 
 
 }

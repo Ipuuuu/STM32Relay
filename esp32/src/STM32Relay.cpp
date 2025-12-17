@@ -69,6 +69,28 @@ void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uin
     packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
 }
 
+// Build a 3-byte packet (command + port + 1 data byte)
+// Build a 3-byte packet (command + port + 1 data byte)
+void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uint8_t singleByteValue) {
+    // Build command byte
+    packet.commandByte.command = cmd;
+    packet.commandByte.parity = parity3(static_cast<uint8_t>(cmd));
+    packet.commandByte.sync = 1;
+    
+    // Build port byte
+    packet.port.data = pin & 0b00111111;
+    packet.port.parity = parity6(packet.port.data);
+    packet.port.sync = 0;
+    
+    // Build data[0] - single byte value 
+    packet.data[0].data = singleByteValue & 0b00111111;
+    packet.data[0].parity = parity6(packet.data[0].data);
+    packet.data[0].sync = 0;
+    
+    // Calculate ECC for command-port pair
+    packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
+}
+
 STM32Relay::STM32Relay(commType type, uint8_t rx, uint8_t tx):
 comm_Type(type), txPin(tx), rxPin(rx){
     if(type == UART){
@@ -161,7 +183,11 @@ STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t mode){
     //debug
     Serial.println("\n=== pinMode Debug ===");
     Serial.print("Pin: "); Serial.println(pin);
-    Serial.print("Mode: "); Serial.println(mode, HEX);
+    Serial.print("Mode: "); 
+    Serial.println((mode == INPUT) ? "INPUT" : 
+                    (mode == OUTPUT) ? "OUTPUT" : 
+                    (mode == INPUT_PULLUP) ? "INPUT_PULLUP" :
+                     "INPUT_PULLDOWN");
 
     // CommandByte::COMMAND_TYPE cmd;
     // if(mode == 0x03) {
@@ -174,20 +200,16 @@ STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t mode){
     // }
     
     
-    // Build packet (2 bytes)
+    // Build packet (3 bytes)
     Packet packet;
-    buildPacket(packet, CommandByte::CMD_SET_PIN_MODE, pin);
-
-    // Send mode directly in data[0]
-    packet.data[0].data = mode & 0x3F;
-    packet.data[0].parity = parity6(packet.data[0].data);
-    packet.data[0].sync = 0;
+    buildPacket(packet, CommandByte::CMD_SET_PIN_MODE, pin, mode);
 
     //debug
     Serial.print("Command: 0b"); Serial.println(static_cast<uint8_t>(packet.commandByte.command), BIN);
     Serial.print("ECC: 0b"); Serial.println(packet.commandByte.ecc, BIN);
     Serial.print("Parity: "); Serial.println(packet.commandByte.parity);
     Serial.print("Port Data: 0x"); Serial.println(packet.port.data, HEX);
+    Serial.print("Mode Data: 0x"); Serial.println(packet.data[0].data, HEX);
 
     sendPacket(packet);
     //debug

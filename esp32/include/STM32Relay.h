@@ -22,6 +22,8 @@ enum REPLY_TYPE{
 
 void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin);
 void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uint16_t value);
+void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uint8_t singleByteValue);  
+
 
 
 class STM32Relay{
