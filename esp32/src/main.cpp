@@ -45,20 +45,20 @@ void setup(){
     Serial.println("Deneyap-STM32 Relay Starting...");
 
     myRelay.pinMode(STM32Relay::PB5, OUTPUT);
-    // myRelay.pinMode(STM32Relay::PB6, INPUT);
-    // myRelay.digitalWrite(STM32Relay::PB6, HIGH);// input pull-up
+    myRelay.pinMode(STM32Relay::PB6, INPUT);
+    myRelay.digitalWrite(STM32Relay::PB6, HIGH);// input pull-up
 
 
 }
 
 void loop(){
-    //digitalwrite
-    myRelay.digitalWrite(STM32Relay::PB5, HIGH);
-    Serial.println("sent HIGH...");
-    delay(200);
-    myRelay.digitalWrite(STM32Relay::PB5, LOW);
-    Serial.println("sent LOW...");
-    delay(200);
+    // //digitalwrite
+    // myRelay.digitalWrite(STM32Relay::PB5, HIGH);
+    // Serial.println("sent HIGH...");
+    // delay(200);
+    // myRelay.digitalWrite(STM32Relay::PB5, LOW);
+    // Serial.println("sent LOW...");
+    // delay(200);
 
     // //analogwrite
     // myRelay.analogWrite(STM32Relay::PB5, brightness);
@@ -79,43 +79,43 @@ void loop(){
     // Serial.print("Analog Write PB5: ");
     // Serial.println(brightness);
 
-    // //digitalread
-    // btnState = myRelay.digitalRead(STM32Relay::PB6);
-    // Serial.print("Digital Read PB6: ");
-    // Serial.println(btnState);  
-    // if(btnState == LOW){
-    //     myRelay.digitalWrite(STM32Relay::PB5, HIGH);    }
-    // else{
-    //     myRelay.digitalWrite(STM32Relay::PB5, LOW);
-    // }   
+    //digitalread
+    btnState = myRelay.digitalRead(STM32Relay::PB6);
+    Serial.print("Digital Read PB6: ");
+    Serial.println(btnState);  
+    if(btnState == LOW){
+        myRelay.digitalWrite(STM32Relay::PB5, HIGH);    }
+    else{
+        myRelay.digitalWrite(STM32Relay::PB5, LOW);
+    }   
 
-    // //wwritePPM
-    // myRelay.writePPM(STM32Relay::PB3, 1500);
-    // delay(1000);
-    // myRelay.writePPM(STM32Relay::PB3, 2000);
-    // delay(1000);
-    // myRelay.writePPM(STM32Relay::PB3, 1000);
-    // delay(1000);   
-    // myRelay.writePPM(STM32Relay::PB3, 500);
-    // delay(1000); 
-    // myRelay.writePPM(STM32Relay::PB3, 0);
-    // delay(1000);  
+//     //wwritePPM
+//     myRelay.writePPM(STM32Relay::PB3, 1500);
+//     delay(1000);
+//     myRelay.writePPM(STM32Relay::PB3, 2000);
+//     delay(1000);
+//     myRelay.writePPM(STM32Relay::PB3, 1000);
+//     delay(1000);   
+//     myRelay.writePPM(STM32Relay::PB3, 500);
+//     delay(1000); 
+//     myRelay.writePPM(STM32Relay::PB3, 0);
+//     delay(1000);  
 
-    // static bool tested = false;
-    // if(!tested) {
-    //     delay(2000);
-    //     testServo();
-    //     tested = true;
-    // }
+//     static bool tested = false;
+//     if(!tested) {
+//         delay(2000);
+//         testServo();
+//         tested = true;
+//     }
 
-  //   for (int pos = 500; pos <= 2500; pos += 5) { 
-  //   // in steps of 1 degree
-  //   myRelay.writePPM(STM32Relay::PB3, pos);              
-  //   delay(15);                   
-  // }
-  // for (int pos = 2500; pos >= 500; pos -= 5) { 
-  //   myRelay.writePPM(STM32Relay::PB3, pos);              
-  //   delay(15);                       
-  // }
+//     for (int pos = 500; pos <= 2500; pos += 5) { 
+//     // in steps of 1 degree
+//     myRelay.writePPM(STM32Relay::PB3, pos);              
+//     delay(15);                   
+//   }
+//   for (int pos = 2500; pos >= 500; pos -= 5) { 
+//     myRelay.writePPM(STM32Relay::PB3, pos);              
+//     delay(15);                       
+//   }
 
 }

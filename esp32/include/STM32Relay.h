@@ -137,7 +137,7 @@ public:
     STM32Relay&  analogWrite(uint8_t pin, uint8_t value);
     int analogRead(uint8_t pin) ;
     STM32Relay&  writePPM(uint8_t pin, uint32_t microseconds);
-    STM32Relay&  pinMode(uint8_t pin, uint8_t value);
+    STM32Relay&  pinMode(uint8_t pin, uint8_t mode);
 
 };
 
@@ -173,3 +173,4 @@ inline void writePPM(uint8_t pin, uint32_t microseconds){
 
 
 #endif
+

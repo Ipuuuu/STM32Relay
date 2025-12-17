@@ -157,22 +157,31 @@ bool STM32Relay::recvPacket(Packet& packet, uint32_t timeout, int expectedBytes)
     return true;
 }
 
-STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t value){
+STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t mode){
     //debug
     Serial.println("\n=== pinMode Debug ===");
     Serial.print("Pin: "); Serial.println(pin);
-    Serial.print("Mode: "); Serial.println(value == 0x03 ? "INPUT" : "OUTPUT");
+    Serial.print("Mode: "); Serial.println(mode, HEX);
 
-    CommandByte::COMMAND_TYPE cmd;
-    if(value == 0x03) {
-        cmd = CommandByte::CMD_SET_PIN_MODE;
-    } else if(value == 0x01) {
-        cmd = CommandByte::CMD_SET_PIN_MODE;
-    }
+    // CommandByte::COMMAND_TYPE cmd;
+    // if(mode == 0x03) {
+    //     cmd = CommandByte::CMD_SET_PIN_MODE;
+    // } else if(mode == 0x01) {
+    //     cmd = CommandByte::CMD_SET_PIN_MODE;
+    // }
+    // else if(mode == 0x05) {
+    //     cmd = CommandByte::CMD_SET_PIN_MODE;
+    // }
+    
     
     // Build packet (2 bytes)
     Packet packet;
-    buildPacket(packet, cmd, pin);
+    buildPacket(packet, CommandByte::CMD_SET_PIN_MODE, pin);
+
+    // Send mode directly in data[0]
+    packet.data[0].data = mode & 0x3F;
+    packet.data[0].parity = parity6(packet.data[0].data);
+    packet.data[0].sync = 0;
 
     //debug
     Serial.print("Command: 0b"); Serial.println(static_cast<uint8_t>(packet.commandByte.command), BIN);
@@ -186,6 +195,8 @@ STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t value){
     
     return (*this);
 }
+
+
 
 STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value){
     //debug
