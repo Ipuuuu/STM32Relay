@@ -19,6 +19,7 @@ namespace Relay {
             CMD_EXTENDED            = 0b111
         };
 
+
         COMMAND_TYPE command : 3;
         byte ecc : 3;
         byte parity : 1;
@@ -30,7 +31,7 @@ namespace Relay {
                     return 2;
                 case CMD_SET_PPM:       // writePPM: 16-bit microseconds across 2 bytes  
                     return 2;           
-                case CMD_SET_PIN_MODE:  // pinMode: mode
+                case CMD_SET_PIN_MODE:  // pinMode: only needs pin number
                     return 1;
                 case CMD_D_W_LOW:       // digitalWrite LOW: only needs pin
                 case CMD_D_W_HIGH:      // digitalWrite HIGH: only needs pin
@@ -39,7 +40,7 @@ namespace Relay {
                     return 0;
                 default:
                     return 0;
-             }
+            }
         }
     };
 

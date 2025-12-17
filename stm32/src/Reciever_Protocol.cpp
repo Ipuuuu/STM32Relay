@@ -3,7 +3,14 @@
 namespace Receiver {
 
 ProtocolHandler::ProtocolHandler(HardwareSerial* port) 
-    : uart_port(port), currentState(IDLE), expectedDataBytes(0), receivedDataBytes(0) {
+    : uart_port(port), currentState(IDLE), expectedDataBytes(0), 
+      receivedDataBytes(0), servoCount(0) {
+    
+    // Initialize servo map
+    for(int i = 0; i < 10; i++) {
+        servoMap[i].pin = 255;
+        servoMap[i].attached = false;
+    }
 }
 
 void ProtocolHandler::begin(uint32_t baud) {
@@ -266,13 +273,25 @@ void ProtocolHandler::executeCommand() {
     switch(currentPacket.commandByte.command) {
         case Relay::CommandByte::CMD_SET_PIN_MODE: {
             uint8_t mode = currentPacket.data[0].data;
-            pinMode(currentPacket.port.data, mode);
-            
             Serial.print("[EXEC] pinMode -> ");
-            if(mode == INPUT) Serial.println("INPUT");
-            else if(mode == OUTPUT) Serial.println("OUTPUT");
-            else if(mode == INPUT_PULLUP) Serial.println("INPUT_PULLUP");
-            else if(mode == INPUT_PULLDOWN) Serial.println("INPUT_PULLDOWN");
+
+            if(mode == 0x01){//deneyaps OUTPUT
+                pinMode(currentPacket.port.data, OUTPUT);
+                Serial.print(mode); Serial.println(" OUTPUT");
+            }
+            else if(mode == 0x03){//deneyaps INPUT_PULLUP
+                pinMode(currentPacket.port.data, INPUT_PULLUP);
+                Serial.print(mode); Serial.println(" INPUT_PULLUP");
+            }
+            else if(mode == 0x09){// deneyaps INPUT_PULLDOWN
+                pinMode(currentPacket.port.data, INPUT_PULLDOWN);
+                Serial.print(mode); Serial.println(" INPUT_PULLDOWN");
+            }
+            else{// same INPUT
+                pinMode(currentPacket.port.data, mode);
+                Serial.print(mode); Serial.println(" INPUT");
+            }
+            
             break;
         }
         
@@ -314,13 +333,47 @@ void ProtocolHandler::executeCommand() {
         }
         
         case Relay::CommandByte::CMD_SET_PPM: {
-            uint16_t microseconds = ((currentPacket.data[0].data & 0x3F) << 6) | 
-                                   (currentPacket.data[1].data & 0x3F);
-            Serial.print("[EXEC] writePPM -> ");
-            Serial.println(microseconds);
-            // Implement PPM logic here
+    uint16_t microseconds = ((currentPacket.data[0].data & 0x3F) << 6) | 
+                           (currentPacket.data[1].data & 0x3F);
+    
+    Serial.print("[EXEC] writePPM -> Pin ");
+    Serial.print(currentPacket.port.data);
+    Serial.print(", ");
+    Serial.print(microseconds);
+    Serial.println(" us");
+    
+    // Find or attach servo
+    int servoIndex = -1;
+    for(int i = 0; i < servoCount; i++) {
+        if(servoMap[i].pin == currentPacket.port.data && servoMap[i].attached) {
+            servoIndex = i;
             break;
         }
+    }
+    
+    // Attach if not found
+    if(servoIndex == -1) {
+        attachServo(currentPacket.port.data);
+        // Find the newly attached servo
+        for(int i = 0; i < servoCount; i++) {
+            if(servoMap[i].pin == currentPacket.port.data && servoMap[i].attached) {
+                servoIndex = i;
+                break;
+            }
+        }
+    }
+    
+    // Write pulse width
+    if(servoIndex >= 0) {
+        servos[servoIndex].writeMicroseconds(microseconds);
+        Serial.println("[SERVO] Position updated");
+    } else {
+        Serial.println("[ERROR] Failed to control servo");
+    }
+    
+    break;
+}
+
         
         default:
             Serial.println("[ERROR] Unknown command!");
@@ -441,5 +494,45 @@ void ProtocolHandler::sendRetransmitRequest() {
     Serial.print("[TX] Sent: 0x");
     Serial.println(byte, HEX);
 }
+
+
+
+void ProtocolHandler::attachServo(uint8_t pin) {
+    // Check if already attached
+    for(int i = 0; i < servoCount; i++) {
+        if(servoMap[i].pin == pin && servoMap[i].attached) {
+            return; // Already attached
+        }
+    }
+    
+    // Find free slot
+    for(int i = 0; i < 10; i++) {
+        if(!servoMap[i].attached) {
+            servos[i].attach(pin);
+            servoMap[i].pin = pin;
+            servoMap[i].attached = true;
+            if(i >= servoCount) servoCount = i + 1;
+            
+            Serial.print("[SERVO] Attached to pin ");
+            Serial.println(pin);
+            return;
+        }
+    }
+    
+    Serial.println("[ERROR] No free servo slots!");
+}
+
+void ProtocolHandler::detachServo(uint8_t pin) {
+    for(int i = 0; i < servoCount; i++) {
+        if(servoMap[i].pin == pin && servoMap[i].attached) {
+            servos[i].detach();
+            servoMap[i].attached = false;
+            Serial.print("[SERVO] Detached from pin ");
+            Serial.println(pin);
+            return;
+        }
+    }
+}
+
 
 } // namespace Receiver

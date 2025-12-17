@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include "ECC.h"
+#include <Servo.h>
 
 namespace Receiver {
 
@@ -31,12 +32,21 @@ private:
     Relay::Packet currentPacket;
     int expectedDataBytes;
     int receivedDataBytes;
+    Servo servos[10];  // Support up to 10 servos
+    uint8_t servoCount;
+    struct ServoInfo {
+        uint8_t pin;
+        bool attached;
+    } servoMap[10];
 
 public:
     ProtocolHandler(HardwareSerial* port);
     
     void begin(uint32_t baud);
     void processIncomingByte(uint8_t byte);
+
+    void attachServo(uint8_t pin);
+    void detachServo(uint8_t pin);
     
 private:
     void handleIdleState(uint8_t byte);
