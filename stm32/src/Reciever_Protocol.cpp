@@ -265,9 +265,14 @@ void ProtocolHandler::executeCommand() {
     
     switch(currentPacket.commandByte.command) {
         case Relay::CommandByte::CMD_SET_PIN_MODE: {
-            // Determine mode from data byte if present
-            pinMode(currentPacket.port.data, OUTPUT); // Default to output
-            Serial.println("[EXEC] pinMode -> OUTPUT");
+            uint8_t mode = currentPacket.data[0].data;
+            pinMode(currentPacket.port.data, mode);
+            
+            Serial.print("[EXEC] pinMode -> ");
+            if(mode == INPUT) Serial.println("INPUT");
+            else if(mode == OUTPUT) Serial.println("OUTPUT");
+            else if(mode == INPUT_PULLUP) Serial.println("INPUT_PULLUP");
+            else if(mode == INPUT_PULLDOWN) Serial.println("INPUT_PULLDOWN");
             break;
         }
         

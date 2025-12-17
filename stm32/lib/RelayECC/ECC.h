@@ -30,8 +30,8 @@ namespace Relay {
                     return 2;
                 case CMD_SET_PPM:       // writePPM: 16-bit microseconds across 2 bytes  
                     return 2;           
-                case CMD_SET_PIN_MODE:  // pinMode: only needs pin number
-                    return 0;
+                case CMD_SET_PIN_MODE:  // pinMode: mode
+                    return 1;
                 case CMD_D_W_LOW:       // digitalWrite LOW: only needs pin
                 case CMD_D_W_HIGH:      // digitalWrite HIGH: only needs pin
                 case CMD_D_R:           // digitalRead: only needs pin
