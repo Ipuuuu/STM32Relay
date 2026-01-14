@@ -199,7 +199,11 @@ STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t mode){
     //     cmd = CommandByte::CMD_SET_PIN_MODE;
     // }
     
-    
+    // to resolve mode config confliction on STM32 side
+    mode = (mode == INPUT) ? 0x00 : 
+           (mode == OUTPUT) ? 0x01 : 
+           (mode == INPUT_PULLUP) ? 0x03 :
+           (mode == INPUT_PULLDOWN) ? 0x09 : 0x00;
     // Build packet (3 bytes)
     Packet packet;
     buildPacket(packet, CommandByte::CMD_SET_PIN_MODE, pin, mode);

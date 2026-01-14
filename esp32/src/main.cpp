@@ -45,19 +45,19 @@ void setup(){
     Serial.println("Deneyap-STM32 Relay Starting...");
 
     myRelay.pinMode(STM32Relay::PB5, OUTPUT);
-    myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
+    // myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
 
 
 }
 
 void loop(){
-    // //digitalwrite
-    // myRelay.digitalWrite(STM32Relay::PB5, HIGH);
-    // Serial.println("sent HIGH...");
-    // delay(200);
-    // myRelay.digitalWrite(STM32Relay::PB5, LOW);
-    // Serial.println("sent LOW...");
-    // delay(200);
+    //digitalwrite
+    myRelay.digitalWrite(STM32Relay::PB5, HIGH);
+    Serial.println("sent HIGH...");
+    delay(200);
+    myRelay.digitalWrite(STM32Relay::PB5, LOW);
+    Serial.println("sent LOW...");
+    delay(200);
 
     // //analogwrite
     // myRelay.analogWrite(STM32Relay::PB5, brightness);
@@ -77,20 +77,36 @@ void loop(){
     // myRelay.analogWrite(STM32Relay::PB5, brightness);
     // Serial.print("Analog Write PB5: ");
     // Serial.println(brightness);
-
-    //digitalread
-    btnState = myRelay.digitalRead(STM32Relay::PB6);
-    Serial.print("Digital Read PB6: ");
-    Serial.println(btnState);  
-    if(btnState == LOW){
-        myRelay.digitalWrite(STM32Relay::PB5, HIGH);    }
-    else{
-        myRelay.digitalWrite(STM32Relay::PB5, LOW);
-    }   
+//digitalread
+    // btnState = myRelay.digitalRead(STM32Relay::PB6);
+    // Serial.print("Digital Read PB6: ");
+    // Serial.println(btnState);  
+    // if(btnState == LOW){
+    //     myRelay.digitalWrite(STM32Relay::PB5, HIGH);    }
+    // else{
+    //     myRelay.digitalWrite(STM32Relay::PB5, LOW);
+    // }   
+    // //digitalread
+    // btnState = myRelay.digitalRead(STM32Relay::PB6);
+    // Serial.print("Digital Read PB6: ");
+    // Serial.println(btnState);  
+    // if(btnState == LOW){
+    //     myRelay.digitalWrite(STM32Relay::PB5, HIGH);    }
+    // else{
+    //     myRelay.digitalWrite(STM32Relay::PB5, LOW);
+    // }   
 
 //     //wwritePPM
 //     myRelay.writePPM(STM32Relay::PB3, 1500);
-//     delay(1000);
+//     delay(1000);//digitalread
+    // btnState = myRelay.digitalRead(STM32Relay::PB6);
+    // Serial.print("Digital Read PB6: ");
+    // Serial.println(btnState);  
+    // if(btnState == LOW){
+    //     myRelay.digitalWrite(STM32Relay::PB5, HIGH);    }
+    // else{
+    //     myRelay.digitalWrite(STM32Relay::PB5, LOW);
+    // }   
 //     myRelay.writePPM(STM32Relay::PB3, 2000);
 //     delay(1000);
 //     myRelay.writePPM(STM32Relay::PB3, 1000);
