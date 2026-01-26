@@ -6,6 +6,8 @@
 #include "Pin.h"
 #include "ECC.h"
 
+#include "tlib.h"
+
 #define SYNC_BIT 0b10000000
 #define PARITY_BIT 0b01000000
 
@@ -114,64 +116,71 @@ public:
     STM_NUM_ANALOG_INPUTS = 10
     } pinName;
 
-    enum commType{
-        UART,
-        I2C
-    };
 private:
-    HardwareSerial *uart_port; //(e.g Serial1, serial2)
-    uint8_t txPin, rxPin;
-    commType comm_Type; //UART or I2C
+    TDEV *tdev; // transmission device pointer
 
 public:
-    STM32Relay(commType type, uint8_t rx, uint8_t tx);
+    // STM32Relay constructor
+    // @param tdev : transmission device pointer
+    STM32Relay(TDEV *tdev);
     
-    // low-level comm
-    STM32Relay&  begin(int32_t baud);
-    STM32Relay&  sendByte(uint8_t byte);
-    STM32Relay& sendPacket(const Packet& packet); 
-    uint8_t recvByte(uint32_t timeout);
-    bool recvPacket(Packet& packet, uint32_t timeout, int expectedBytes);
+
+    inline TDEV *getTDEV() const{ return tdev; }
+    inline TDEV *getTDEV(){ return tdev; }
+
+    // low-level commands
+    inline void begin() {tdev->begin();}
+    inline void sendByte(uint8_t byte, uint8_t addr = 0x00) {tdev->sendByte(byte, addr);}
+    inline void recvByte(uint8_t addr = 0x00) {tdev->recvByte(addr);}
+    inline void setTimeout(uint32_t timeout) {tdev->setTimeout(timeout);}
+    
+
+    STM32Relay& sendPacket(const Packet& packet, uint8_t addr = 0x00);
+    bool recvPacket(Packet& packet, int expectedBytes, uint8_t addr = 0x00);
 
     //high-level commands
-    STM32Relay&  digitalWrite(uint8_t pin, uint8_t value);
-    bool digitalRead(uint8_t pin) ;
-    STM32Relay&  analogWrite(uint8_t pin, uint8_t value);
-    int analogRead(uint8_t pin) ;
-    STM32Relay&  writePPM(uint8_t pin, uint32_t microseconds);
-    STM32Relay&  pinMode(uint8_t pin, uint8_t mode);
+    STM32Relay&  digitalWrite(uint8_t pin, uint8_t value, uint8_t addr = 0x00);
+    bool digitalRead(uint8_t pin, uint8_t addr = 0x00);
+    STM32Relay&  analogWrite(uint8_t pin, uint8_t value, uint8_t addr = 0x00);
+    int analogRead(uint8_t pin, uint8_t addr = 0x00);
+    STM32Relay&  writePPM(uint8_t pin, uint32_t microseconds, uint8_t addr = 0x00);
+    STM32Relay&  pinMode(uint8_t pin, uint8_t mode, uint8_t addr = 0x00);
 
 };
 
 extern STM32Relay relay; //global relay object
 
-//functions
-inline void begin(int32_t baud){
-    relay.begin(baud);
+//global function wrappers
+inline void begin(){
+    relay.getTDEV()->begin();
 }
-inline void sendByte(uint8_t byte){
-    relay.sendByte(byte);
+inline void sendByte(uint8_t byte, uint8_t addr = 0x00){
+    relay.getTDEV()->sendByte(byte, addr);
 }
-inline uint8_t recvByte(uint32_t timeout){
-    return relay.recvByte(timeout);
+inline uint8_t recvByte(uint8_t addr = 0x00){
+    return relay.getTDEV()->recvByte(addr);
 }
-inline void digitalWrite(uint8_t pin, uint8_t value){
-    relay.digitalWrite(pin, value);
+inline void digitalWrite(uint8_t pin, uint8_t value, uint8_t addr = 0x00){
+    relay.digitalWrite(pin, value, addr);
 }
-inline bool digitalRead(uint8_t pin){
-    return relay.digitalRead(pin);
+inline bool digitalRead(uint8_t pin, uint8_t addr = 0x00){
+    return relay.digitalRead(pin, addr);
 }
-inline void analogWrite(uint8_t pin, uint8_t value){
-    relay.analogWrite(pin, value);
+inline void analogWrite(uint8_t pin, uint8_t value, uint8_t addr = 0x00){
+    relay.analogWrite(pin, value, addr);
 }
-inline int analogRead(uint8_t pin){
-    return relay.analogRead(pin);
+inline int analogRead(uint8_t pin, uint8_t addr = 0x00){
+    return relay.analogRead(pin, addr);
 }
-inline void writePPM(uint8_t pin, uint32_t microseconds){
-    relay.writePPM(pin, microseconds);
+inline void writePPM(uint8_t pin, uint32_t microseconds, uint8_t addr = 0x00){
+    relay.writePPM(pin, microseconds, addr);
+}
+inline void setTimeout(uint32_t timeout){
+    relay.getTDEV()->setTimeout(timeout);
+
 }
 
-};
+}
 
 
 #endif

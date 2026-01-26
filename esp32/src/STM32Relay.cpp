@@ -91,71 +91,36 @@ void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uin
     packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
 }
 
-STM32Relay::STM32Relay(commType type, uint8_t rx, uint8_t tx):
-comm_Type(type), txPin(tx), rxPin(rx){
-    if(type == UART){
-        uart_port = &Serial1;
-    }
-}
+STM32Relay::STM32Relay(TDEV *tdev)
+    : tdev(tdev){}
 
 
-STM32Relay&  STM32Relay::begin(int32_t baud) {
-    uart_port->begin(baud, SERIAL_8N1,rxPin,txPin);
 
-    // Clear any startup garbage
-    while(uart_port->available()) {
-        uart_port->read();
-    }
-    delay(100);  //give STM32 time to initialize
-
-    return (*this);
-}
-
-STM32Relay&  STM32Relay::sendByte(uint8_t byte) {
-    // Serial.print("TX: 0b");
-    // Serial.println(byte, BIN);  
-    
-    uart_port->write(byte);
-    uart_port->flush();
-    return (*this);
-}
-
-STM32Relay& STM32Relay::sendPacket(const Packet& packet) {
+STM32Relay& STM32Relay::sendPacket(const Packet& packet, uint8_t addr) {
     int numDataBytes = packet.commandByte.requiresData();
     uint8_t bytes[4];
     
     packetToBytes(packet, bytes, numDataBytes);
     
     // Send all bytes
-    sendByte(bytes[0]);
-    sendByte(bytes[1]);
+    tdev->sendByte(bytes[0], addr);
+    tdev->sendByte(bytes[1], addr);
     
     if(numDataBytes >= 1) {
-        sendByte(bytes[2]);
+        tdev->sendByte(bytes[2], addr);
     }
     if(numDataBytes >= 2) {
-        sendByte(bytes[3]);
+        tdev->sendByte(bytes[3], addr);
     }
     return (*this);
 }
 
-uint8_t STM32Relay::recvByte(uint32_t timeout) {
-    uint32_t startTime = millis();
-
-    while(!uart_port->available()){
-        if((millis() - startTime ) > timeout){
-            return 0xFF; // return error
-        }
-    }
-    return uart_port->read(); //return byte
-}
-
-bool STM32Relay::recvPacket(Packet& packet, uint32_t timeout, int expectedBytes) {
+bool STM32Relay::recvPacket(Packet& packet, int expectedBytes, uint8_t addr) {
     uint8_t bytes[4] = {0};
     
     // Receive bytes
     for(int i = 0; i < expectedBytes; i++) {
-        bytes[i] = recvByte(timeout);
+        bytes[i] = tdev->recvByte(addr);
         if(bytes[i] == 0xFF) {  // Timeout
             return false;
         }
@@ -179,7 +144,7 @@ bool STM32Relay::recvPacket(Packet& packet, uint32_t timeout, int expectedBytes)
     return true;
 }
 
-STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t mode){
+STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t mode, uint8_t addr){
     //debug
     Serial.println("\n=== pinMode Debug ===");
     Serial.print("Pin: "); Serial.println(pin);
@@ -215,7 +180,7 @@ STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t mode){
     Serial.print("Port Data: 0x"); Serial.println(packet.port.data, HEX);
     Serial.print("Mode Data: 0x"); Serial.println(packet.data[0].data, HEX);
 
-    sendPacket(packet);
+    sendPacket(packet, addr);
     //debug
     Serial.println("Packet sent");
     
@@ -224,7 +189,7 @@ STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t mode){
 
 
 
-STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value){
+STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value, uint8_t addr){
     //debug
     Serial.println("\n=== digitalWrite Debug ===");
     Serial.print("Pin: "); Serial.println(pin);
@@ -246,14 +211,14 @@ STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value){
     Serial.print("Parity: "); Serial.println(packet.commandByte.parity);
     Serial.print("Port Data: 0x"); Serial.println(packet.port.data, HEX);
     
-    sendPacket(packet);
+    sendPacket(packet, addr);
     //debug
     Serial.println("Packet sent");
 
     return (*this);
 }
 
-bool STM32Relay::digitalRead(uint8_t pin) {
+bool STM32Relay::digitalRead(uint8_t pin, uint8_t addr) {
     Serial.println("\n=== digitalRead Debug ===");
     Serial.print("Pin: "); Serial.println(pin);
 
@@ -264,13 +229,13 @@ bool STM32Relay::digitalRead(uint8_t pin) {
     Serial.print("Request Command: 0b"); Serial.println(static_cast<uint8_t>(requestPacket.commandByte.command), BIN);
     Serial.print("Request ECC: 0b"); Serial.println(requestPacket.commandByte.ecc, BIN);
     
-    sendPacket(requestPacket);
+    sendPacket(requestPacket, addr);
     //debug
     Serial.println("Request sent, waiting for reply...");
     
     // Receive response (2 bytes: command + data)
     Packet replyPacket;
-    if(!recvPacket(replyPacket, 1000, 2)) {
+    if(!recvPacket(replyPacket, 2, addr)) {
         return false;
     }
 
@@ -290,7 +255,7 @@ bool STM32Relay::digitalRead(uint8_t pin) {
     return (replyCode == REPLY_D_HIGH);
 }
 
-STM32Relay&  STM32Relay::analogWrite(uint8_t pin, uint8_t value){
+STM32Relay&  STM32Relay::analogWrite(uint8_t pin, uint8_t value, uint8_t addr){
     //debug
     Serial.println("\n=== analogWrite Debug ===");
     Serial.print("Pin: "); Serial.println(pin);
@@ -314,7 +279,7 @@ STM32Relay&  STM32Relay::analogWrite(uint8_t pin, uint8_t value){
     Serial.print("Data[0] Parity: "); Serial.println(packet.data[0].parity);
     Serial.print("Data[1] Parity: "); Serial.println(packet.data[1].parity);
 
-    sendPacket(packet);
+    sendPacket(packet, addr);
 
     //debug
     Serial.println("Packet sent");
@@ -323,7 +288,7 @@ STM32Relay&  STM32Relay::analogWrite(uint8_t pin, uint8_t value){
     return (*this);
 }
 
-int STM32Relay::analogRead(uint8_t pin){
+int STM32Relay::analogRead(uint8_t pin, uint8_t addr){
     //debug
     Serial.println("\n=== analogRead Debug ===");
     Serial.print("Pin: "); Serial.println(pin);
@@ -335,14 +300,14 @@ int STM32Relay::analogRead(uint8_t pin){
     Serial.print("Request Command: 0b"); Serial.println(static_cast<uint8_t>(requestPacket.commandByte.command), BIN);
     Serial.print("Request ECC: 0b"); Serial.println(requestPacket.commandByte.ecc, BIN);
 
-    sendPacket(requestPacket);
+    sendPacket(requestPacket, addr);
 
     //debug
     Serial.println("Request sent, waiting for reply...");
     
     // Receive response (4 bytes: command + port + 2 data bytes)
     Packet replyPacket;
-    if(!recvPacket(replyPacket, 1000, 4)) {
+    if(!recvPacket(replyPacket, 4, addr)) {
         return -1;
     }
 
@@ -363,7 +328,7 @@ int STM32Relay::analogRead(uint8_t pin){
     return value;
 }
 
-STM32Relay&  STM32Relay::writePPM(uint8_t pin, uint32_t microseconds){
+STM32Relay&  STM32Relay::writePPM(uint8_t pin, uint32_t microseconds, uint8_t addr){
     //debug
     Serial.println("\n=== writePPM Debug ===");
     Serial.print("Pin: "); Serial.println(pin);
@@ -380,7 +345,7 @@ STM32Relay&  STM32Relay::writePPM(uint8_t pin, uint32_t microseconds){
     Serial.print("Data[0]: 0b"); Serial.println(packet.data[0].data, BIN);
     Serial.print("Data[1]: 0b"); Serial.println(packet.data[1].data, BIN);
 
-    sendPacket(packet);
+    sendPacket(packet, addr);
 
     //debug
     Serial.println("Packet sent");

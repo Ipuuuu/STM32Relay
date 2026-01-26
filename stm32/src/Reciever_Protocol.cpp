@@ -2,8 +2,8 @@
 
 namespace Receiver {
 
-ProtocolHandler::ProtocolHandler(HardwareSerial* port) 
-    : uart_port(port), currentState(IDLE), expectedDataBytes(0), 
+ProtocolHandler::ProtocolHandler(TDEV* tdev) 
+    : tdev(tdev), currentState(IDLE), expectedDataBytes(0), 
       receivedDataBytes(0), servoCount(0) {
     
     // Initialize servo map
@@ -11,19 +11,6 @@ ProtocolHandler::ProtocolHandler(HardwareSerial* port)
         servoMap[i].pin = 255;
         servoMap[i].attached = false;
     }
-}
-
-void ProtocolHandler::begin(uint32_t baud) {
-    uart_port->begin(baud);
-    
-    // Clear any startup garbage
-    while(uart_port->available()) {
-        uart_port->read();
-    }
-    
-    resetState();
-    Serial.println("=== STM32 Receiver Starting ===");
-    Serial.println("ECC Error Correction: ENABLED");
 }
 
 void ProtocolHandler::resetState() {
@@ -56,6 +43,13 @@ void ProtocolHandler::processIncomingByte(uint8_t byte) {
         case READING_DATA_2:
             handleReadingData2State(byte);
             break;
+    }
+}
+
+void ProtocolHandler::processIncomingBytes() {
+    while(true) {
+        uint8_t byte = tdev->recvByte();
+        processIncomingByte(byte);
     }
 }
 
@@ -410,8 +404,8 @@ void ProtocolHandler::sendDigitalReadResponse(uint8_t pin, bool value) {
     uint8_t byte1 = *reinterpret_cast<uint8_t*>(&responsePacket.commandByte);
     uint8_t byte2 = *reinterpret_cast<uint8_t*>(&responsePacket.port);
     
-    uart_port->write(byte1);
-    uart_port->write(byte2);
+    tdev->sendByte(byte1);
+    tdev->sendByte(byte2);
     
     Serial.print("[TX] Sent: 0x");
     Serial.print(byte1, HEX);
@@ -459,10 +453,10 @@ void ProtocolHandler::sendAnalogReadResponse(uint8_t pin, uint16_t value) {
     uint8_t byte3 = *reinterpret_cast<uint8_t*>(&responsePacket.data[0]);
     uint8_t byte4 = *reinterpret_cast<uint8_t*>(&responsePacket.data[1]);
     
-    uart_port->write(byte1);
-    uart_port->write(byte2);
-    uart_port->write(byte3);
-    uart_port->write(byte4);
+    tdev->sendByte(byte1);
+    tdev->sendByte(byte2);
+    tdev->sendByte(byte3);
+    tdev->sendByte(byte4);
     
     Serial.print("[TX] Sent: 0x");
     Serial.print(byte1, HEX);
@@ -489,7 +483,7 @@ void ProtocolHandler::sendRetransmitRequest() {
     responsePacket.commandByte.ecc = 0; // No ECC needed for single-byte response
     
     uint8_t byte = *reinterpret_cast<uint8_t*>(&responsePacket.commandByte);
-    uart_port->write(byte);
+    tdev->sendByte(byte);
     
     Serial.print("[TX] Sent: 0x");
     Serial.println(byte, HEX);

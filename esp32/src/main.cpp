@@ -5,7 +5,16 @@
 
 using namespace Relay;
 
-STM32Relay myRelay(STM32Relay::UART, D8, D9); 
+/* */
+UARTDevice uartDev(115200, D8, D9, &Serial1); // UARTDevice object for Serial1 communication
+STM32Relay myRelay(&uartDev);
+//*/
+
+/*
+I2CDevice i2cDev(&Wire, D21, D22); // I2CDevice object for I2C communication
+STM32Relay myRelay(&i2cDev); 
+*/
+
 uint8_t brightness= 0;
 uint8_t fadeAmt = 5;
 
@@ -40,7 +49,7 @@ void testServo() {
 
 void setup(){
     Serial.begin(115200);
-    myRelay.begin(115200);
+    myRelay.begin();
     delay(1000);
     Serial.println("Deneyap-STM32 Relay Starting...");
 
@@ -52,10 +61,10 @@ void setup(){
 
 void loop(){
     //digitalwrite
-    myRelay.digitalWrite(STM32Relay::PB5, HIGH);
+    myRelay.digitalWrite(STM32Relay::PB5, HIGH, 0x42);
     Serial.println("sent HIGH...");
     delay(200);
-    myRelay.digitalWrite(STM32Relay::PB5, LOW);
+    myRelay.digitalWrite(STM32Relay::PB5, LOW, 0x42);
     Serial.println("sent LOW...");
     delay(200);
 

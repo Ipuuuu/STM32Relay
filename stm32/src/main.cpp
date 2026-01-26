@@ -1,18 +1,34 @@
 #include <Arduino.h>
+#include <HardwareSerial.h>
 #include "ReceiverProtocol.h"
+#include "tlib.h"
+#include <Wire.h>
 
-Receiver::ProtocolHandler handler(&Serial1);
+
+#define I2C_ADDRESS 0x42
+
+Receiver::UARTDevice uartDevice(115200, PB9, PB10, &Serial);
+Receiver::I2CSlave i2cDevice(&Wire, I2C_ADDRESS, PB6, PB7);
+
+
+// Test UART Receiver
+Receiver::ProtocolHandler handler(&uartDevice);
+
+// Test I2C Slave
+// Receiver::ProtocolHandler handler(&i2cDevice);
 
 void setup() {
+    //UART Setup
     Serial.begin(115200);
     delay(1000);
     
-    handler.begin(115200);
+    handler.begin();
 }
 
-void loop() {
-    if(Serial1.available()) {
-        uint8_t byte = Serial1.read();
-        handler.processIncomingByte(byte);
-    }
+void loop(){
+
+    // needed to move the reading logic
+    // to the ProtocolHandler class and
+    // made it generic for any TDEV protocol
+    handler.processIncomingBytes();
 }
