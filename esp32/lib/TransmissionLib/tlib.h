@@ -22,6 +22,9 @@ class TDEV{
         // set timeout function
         virtual void setTimeout(uint32_t timeout) = 0;
 
+        // available function
+        virtual int available() = 0;
+
         virtual ~TDEV() = default;
 };
 
@@ -29,11 +32,12 @@ class TDEV{
 class UARTDevice : public TDEV{
     private:
         uint8_t txPin, rxPin;
-        HardwareSerial *uart_port; // serial port
+        
         uint32_t tout; // timeout
         uint32_t baud;
 
     public:
+        HardwareSerial *uart_port; // serial port
         explicit UARTDevice(uint32_t baud, uint8_t rxPin, uint8_t txPin, HardwareSerial *uartport);
 
         UARTDevice(const UARTDevice&) = delete;
@@ -48,6 +52,10 @@ class UARTDevice : public TDEV{
 
         // recv bytes through the UART device
         uint8_t recvByte(uint8_t addr = 0x00) override;
+
+        // available overriding
+        int available() override;
+
 
         // settimeout of the uart device to be used in necessary functions
 
@@ -83,6 +91,9 @@ class I2CMaster : public TDEV{
         // RecvByte
         // @saddr : slave adress, default will be 0x00
         uint8_t recvByte(uint8_t saddr = 0x00) override;
+
+        // available overriding (remember to implement)
+        int available() override;
         
         // set timeout for I2C device
         // should better write later with MACRO checks for 
@@ -117,8 +128,14 @@ class I2CSlave : public TDEV{
         ~I2CSlave() = default;
 
         void begin() override;
+        
         void sendByte(uint8_t byte, uint8_t) override;
+
         uint8_t recvByte(uint8_t) override;
+
+        // available overriding (remember to implement)
+        int available() override;
+
         void setTimeout(uint32_t timeout) override;
         
 };

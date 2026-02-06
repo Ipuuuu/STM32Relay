@@ -53,69 +53,79 @@ void setup(){
     delay(1000);
     Serial.println("Deneyap-STM32 Relay Starting...");
 
-    myRelay.pinMode(STM32Relay::PB5, OUTPUT);
-    // myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
+    //myRelay.pinMode(STM32Relay::PB5, OUTPUT);
+    myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
 
 
 }
 
-void loop(){
-    //digitalwrite
-    myRelay.digitalWrite(STM32Relay::PB5, HIGH, 0x42);
-    Serial.println("sent HIGH...");
-    delay(200);
-    myRelay.digitalWrite(STM32Relay::PB5, LOW, 0x42);
-    Serial.println("sent LOW...");
-    delay(200);
+//  TESTING
+// 1. DIGWRITE: Pass
+// 2. ANALOGWRITE: PASS
+// 3. ANALOGREAD: PASS
+// 4. DIGITALREAD: PASS
+// 5. SERVO: PASS
 
-    // //analogwrite
+void loop(){
+    // #################################
+    // TEST 1: digitalwrite, LED blinking
+    // myRelay.digitalWrite(STM32Relay::PB5, HIGH, 0x42);
+    // Serial.println("sent HIGH...");
+    // delay(1000);
+    // myRelay.digitalWrite(STM32Relay::PB5, LOW, 0x42);
+    // Serial.println("sent LOW...");
+    // delay(1000);
+    // #################################
+
+    // #################################
+    // TEST 2: analogwrite, LED fade
     // myRelay.analogWrite(STM32Relay::PB5, brightness);
     // brightness = brightness + fadeAmt;
     // if(brightness == 0 || brightness == 255){
     //     fadeAmt = -fadeAmt; 
     // }
     // delay(30);
+    // #################################
 
-    // //analogread
-    // sensorValue = myRelay.analogRead(0xC0);
-    // Serial.print("Analog Read PA0: ");
-    // Serial.println(sensorValue);
+    // #################################
+    // TEST 3: analogread, Potentiometer
+    sensorValue = myRelay.analogRead(0xC0);
+    Serial.print("Analog Read PA0: ");
+    Serial.println(sensorValue);
 
-    // brightness = map(sensorValue, 0, 1023, 0, 255);
+    brightness = map(sensorValue, 0, 1023, 0, 255);
 
-    // myRelay.analogWrite(STM32Relay::PB5, brightness);
-    // Serial.print("Analog Write PB5: ");
-    // Serial.println(brightness);
-//digitalread
+    myRelay.analogWrite(STM32Relay::PB5, brightness);
+    Serial.print("Analog Write PB5: ");
+    Serial.println(brightness);
+    // #################################
+
+    // #################################
+    // TEST 4: digitalread, Button
     // btnState = myRelay.digitalRead(STM32Relay::PB6);
     // Serial.print("Digital Read PB6: ");
     // Serial.println(btnState);  
     // if(btnState == LOW){
-    //     myRelay.digitalWrite(STM32Relay::PB5, HIGH);    }
+    //     myRelay.digitalWrite(STM32Relay::PB5, HIGH);    
+    // }
     // else{
     //     myRelay.digitalWrite(STM32Relay::PB5, LOW);
-    // }   
-    // //digitalread
-    // btnState = myRelay.digitalRead(STM32Relay::PB6);
-    // Serial.print("Digital Read PB6: ");
-    // Serial.println(btnState);  
-    // if(btnState == LOW){
-    //     myRelay.digitalWrite(STM32Relay::PB5, HIGH);    }
-    // else{
-    //     myRelay.digitalWrite(STM32Relay::PB5, LOW);
-    // }   
+    // }
+    // #################################
 
-//     //wwritePPM
+    // #################################
+    // TEST 5: PPM write, SERVO
 //     myRelay.writePPM(STM32Relay::PB3, 1500);
 //     delay(1000);//digitalread
-    // btnState = myRelay.digitalRead(STM32Relay::PB6);
-    // Serial.print("Digital Read PB6: ");
-    // Serial.println(btnState);  
-    // if(btnState == LOW){
-    //     myRelay.digitalWrite(STM32Relay::PB5, HIGH);    }
-    // else{
-    //     myRelay.digitalWrite(STM32Relay::PB5, LOW);
-    // }   
+//     btnState = myRelay.digitalRead(STM32Relay::PB6);
+//     Serial.print("Digital Read PB6: ");
+//     Serial.println(btnState);  
+//     if(btnState == LOW){
+//         myRelay.digitalWrite(STM32Relay::PB5, HIGH);
+//     }
+//     else{
+//         myRelay.digitalWrite(STM32Relay::PB5, LOW);
+//     }   
 //     myRelay.writePPM(STM32Relay::PB3, 2000);
 //     delay(1000);
 //     myRelay.writePPM(STM32Relay::PB3, 1000);
@@ -141,5 +151,6 @@ void loop(){
 //     myRelay.writePPM(STM32Relay::PB3, pos);              
 //     delay(15);                       
 //   }
+    // #################################
 
 }

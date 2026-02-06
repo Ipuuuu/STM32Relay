@@ -1,5 +1,6 @@
 #include "STM32Relay.h"
 
+
 namespace Relay{
 // Helper: Convert Relay::Packet to raw bytes for transmission
 void packetToBytes(const Packet& packet, uint8_t* bytes, int numDataBytes) {

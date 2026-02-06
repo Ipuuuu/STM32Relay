@@ -7,22 +7,21 @@ namespace Relay{
     // ###########################
 
     UARTDevice::UARTDevice(uint32_t baud, uint8_t rxPin, uint8_t txPin, HardwareSerial *uartport)
-        : tout(1000), baud(baud), rxPin(rxPin), txPin(txPin) {uart_port = uartport;}
-
+        : tout(1000), baud(baud), rxPin(rxPin), txPin(txPin), uart_port(uartport){}
     void UARTDevice::begin(){
         #ifdef ARDUINO_ARCH_STM32
         // For STM32, use the pin-defined begin
         uart_port->begin(baud);
         #else
         // For other platforms, standard begin
-        uart_port->begin(baud,rxPin,txPin);
-        #endif
-        
-        // Clear any startup garbage
+        uart_port->begin(baud,SERIAL_8N1,rxPin,txPin);
         while(uart_port->available()) {
             uart_port->read();
         }
-        delay(100);  //give STM32 time to initialize
+        delay(100);
+        #endif
+        
+        
     }
 
     void UARTDevice::sendByte(uint8_t byte, uint8_t addr){
@@ -31,14 +30,11 @@ namespace Relay{
     }
 
     uint8_t UARTDevice::recvByte(uint8_t addr){
-        uint32_t startTime = millis();
+        return uart_port->read();
+    }
 
-        while(!uart_port->available()){
-            if((millis() - startTime ) > tout){
-                return 0xFF; // return error
-            }
-        }
-        return uart_port->read(); //return byte
+    int UARTDevice::available(){
+        return uart_port->available();
     }
 
     void UARTDevice::setTimeout(const uint32_t timeout){
@@ -85,6 +81,11 @@ namespace Relay{
         uint8_t requested_bytes = wire->available();
         if(!requested_bytes) return 0XFF; // error getting bytes
         return wire->read();
+    }
+
+    // available overriding (remember to implement)
+    int I2CMaster::available(){
+        
     }
 
     void I2CMaster::setTimeout(uint32_t timeout){
@@ -146,6 +147,11 @@ namespace Relay{
         uint8_t value = rxBuffer[rxNext++];
         if(rxNext == rxBufferIndex) rxNext = rxBufferIndex = 0;
         return value;
+    }
+
+    // available overriding (remember to implement)
+    int I2CSlave::available(){
+        
     }
 
     void I2CSlave::setTimeout(uint32_t timeout){}
