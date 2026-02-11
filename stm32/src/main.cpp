@@ -7,15 +7,18 @@
 
 #define I2C_ADDRESS 0x42
 
-Receiver::UARTDevice uartDevice(115200, PB9, PB10, &Serial);
-Receiver::I2CSlave i2cDevice(&Wire, I2C_ADDRESS, PB6, PB7);
+
+//Receiver::UARTDevice uartDevice(115200, PB9, PB10, &Serial);
+
+
+Receiver::I2CSlave i2cDevice(&Wire, I2C_ADDRESS);
 
 
 // Test UART Receiver
-Receiver::ProtocolHandler handler(&uartDevice);
+//Receiver::ProtocolHandler handler(&uartDevice);
 
 // Test I2C Slave
-// Receiver::ProtocolHandler handler(&i2cDevice);
+Receiver::ProtocolHandler handler(&i2cDevice);
 
 void setup() {
     //UART Setup

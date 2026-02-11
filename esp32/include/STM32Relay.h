@@ -130,7 +130,7 @@ public:
 
     // low-level commands
     inline void begin() {tdev->begin();}
-    inline void sendByte(uint8_t byte, uint8_t addr = 0x00) {tdev->sendByte(byte, addr);}
+    inline void sendByte(uint8_t byte, uint8_t addr = 0x00);
     inline void recvByte(uint8_t addr = 0x00) {tdev->recvByte(addr);}
     inline void setTimeout(uint32_t timeout) {tdev->setTimeout(timeout);}
     

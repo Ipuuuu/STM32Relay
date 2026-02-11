@@ -97,6 +97,16 @@ STM32Relay::STM32Relay(TDEV *tdev)
 
 
 
+void STM32Relay::sendByte(uint8_t byte, uint8_t addr) {
+    uint8_t errorCode = tdev->sendByte(byte, addr);
+    if(errorCode != 0) {
+        Serial.println("Error sending byte: " + String(byte, HEX));
+        Serial.println("Address: " + String(addr, HEX));
+        Serial.println("Error code: " + String(errorCode));
+    }
+}
+
+
 STM32Relay& STM32Relay::sendPacket(const Packet& packet, uint8_t addr) {
     int numDataBytes = packet.commandByte.requiresData();
     uint8_t bytes[4];
@@ -104,14 +114,14 @@ STM32Relay& STM32Relay::sendPacket(const Packet& packet, uint8_t addr) {
     packetToBytes(packet, bytes, numDataBytes);
     
     // Send all bytes
-    tdev->sendByte(bytes[0], addr);
-    tdev->sendByte(bytes[1], addr);
+    sendByte(bytes[0], addr);
+    sendByte(bytes[1], addr);
     
     if(numDataBytes >= 1) {
-        tdev->sendByte(bytes[2], addr);
+        sendByte(bytes[2], addr);
     }
     if(numDataBytes >= 2) {
-        tdev->sendByte(bytes[3], addr);
+        sendByte(bytes[3], addr);
     }
     return (*this);
 }

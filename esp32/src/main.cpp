@@ -5,15 +5,15 @@
 
 using namespace Relay;
 
-/* */
+/* 
 UARTDevice uartDev(115200, D8, D9, &Serial1); // UARTDevice object for Serial1 communication
 STM32Relay myRelay(&uartDev);
 //*/
 
-/*
-I2CDevice i2cDev(&Wire, D21, D22); // I2CDevice object for I2C communication
+/* */
+I2CMaster i2cDev(&Wire); // I2CDevice object for I2C communication
 STM32Relay myRelay(&i2cDev); 
-*/
+//*/
 
 uint8_t brightness= 0;
 uint8_t fadeAmt = 5;
@@ -59,22 +59,32 @@ void setup(){
 
 }
 
-//  TESTING
+//  TESTING UART
 // 1. DIGWRITE: Pass
 // 2. ANALOGWRITE: PASS
 // 3. ANALOGREAD: PASS
 // 4. DIGITALREAD: PASS
 // 5. SERVO: PASS
 
+// TESTING I2C
+// 1. DIGWRITE: PARTIAL
+//    - Sends the commands, receiver receives and executets but nothing happens
+//    - Will look on later (
+//      - Possible Cases:
+//        - Faulty LED/WIRING/CONNECTIONS
+//        - I2C code issues (very unlikely but should investigate)
+//        - )
+
+
 void loop(){
     // #################################
     // TEST 1: digitalwrite, LED blinking
-    // myRelay.digitalWrite(STM32Relay::PB5, HIGH, 0x42);
-    // Serial.println("sent HIGH...");
-    // delay(1000);
-    // myRelay.digitalWrite(STM32Relay::PB5, LOW, 0x42);
-    // Serial.println("sent LOW...");
-    // delay(1000);
+    myRelay.digitalWrite(STM32Relay::PB5, HIGH, 0x42);
+    Serial.println("sent HIGH...");
+    delay(1000);
+    myRelay.digitalWrite(STM32Relay::PB5, LOW, 0x42);
+    Serial.println("sent LOW...");
+    delay(1000);
     // #################################
 
     // #################################
@@ -89,15 +99,15 @@ void loop(){
 
     // #################################
     // TEST 3: analogread, Potentiometer
-    sensorValue = myRelay.analogRead(0xC0);
-    Serial.print("Analog Read PA0: ");
-    Serial.println(sensorValue);
+    // sensorValue = myRelay.analogRead(0xC0);
+    // Serial.print("Analog Read PA0: ");
+    // Serial.println(sensorValue);
 
-    brightness = map(sensorValue, 0, 1023, 0, 255);
+    // brightness = map(sensorValue, 0, 1023, 0, 255);
 
-    myRelay.analogWrite(STM32Relay::PB5, brightness);
-    Serial.print("Analog Write PB5: ");
-    Serial.println(brightness);
+    // myRelay.analogWrite(STM32Relay::PB5, brightness);
+    // Serial.print("Analog Write PB5: ");
+    // Serial.println(brightness);
     // #################################
 
     // #################################

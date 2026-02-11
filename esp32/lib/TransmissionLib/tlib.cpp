@@ -14,19 +14,18 @@ namespace Relay{
         uart_port->begin(baud);
         #else
         // For other platforms, standard begin
-        uart_port->begin(baud,SERIAL_8N1,rxPin,txPin);
+        uart_port->begin(baud,rxPin,txPin);
+        #endif
+        
         while(uart_port->available()) {
             uart_port->read();
         }
-        delay(100);
-        #endif
-        
-        
     }
 
-    void UARTDevice::sendByte(uint8_t byte, uint8_t addr){
+    uint8_t UARTDevice::sendByte(uint8_t byte, uint8_t addr){
         uart_port->write(byte);
         uart_port->flush();
+        return 0; // Success
     }
 
     uint8_t UARTDevice::recvByte(uint8_t addr){
@@ -46,33 +45,21 @@ namespace Relay{
     /* I2C Master Implementation */
     // ###########################
 
-    I2CMaster::I2CMaster(TwoWire *wire, uint8_t sdaPin, uint8_t sclPin)
-        : wire(wire), sdaPin(sdaPin), sclPin(sclPin) {}
+    I2CMaster::I2CMaster(TwoWire *wire)
+        : wire(wire) {}
 
     void I2CMaster::begin(){
         // should add error checks for
         // platforms that do not support pin defined I2C
-        wire->begin(sdaPin, sclPin);
+        wire->begin();
     }
 
-    void I2CMaster::sendByte(uint8_t byte, uint8_t addr){
+    uint8_t I2CMaster::sendByte(uint8_t byte, uint8_t addr){
         wire->beginTransmission(addr);
             wire->write(byte);
 
             // TO-DO: error checking for endTranmission() return values
-            uint8_t error = wire->endTransmission();
-
-            if(error == 1){
-                // data too long
-            }else if(error == 2){
-                // NACK on adress transmit (invalid adress)
-            }else if(error == 3){
-                // NACK on data transmit (invalid data)
-            }else if(error == 4){
-                // other error
-            }else if(error == 5){
-                // timeout
-            }
+            return wire->endTransmission();
     }
 
     uint8_t I2CMaster::recvByte(uint8_t saddr){
@@ -83,9 +70,10 @@ namespace Relay{
         return wire->read();
     }
 
-    // available overriding (remember to implement)
+    // available overriding (add later)
     int I2CMaster::available(){
-        
+        // not implemented yet
+        return 0;
     }
 
     void I2CMaster::setTimeout(uint32_t timeout){
@@ -119,8 +107,8 @@ namespace Relay{
     }
 
 
-    I2CSlave::I2CSlave(TwoWire *wire, uint8_t address, uint8_t sdaPin, uint8_t sclPin)
-        : wire(wire), addr(address), sdaPin(sdaPin), sclPin(sclPin), txLen(0), 
+    I2CSlave::I2CSlave(TwoWire *wire, uint8_t address)
+        : wire(wire), addr(address), txLen(0), 
           txBufferIndex(0), rxBufferIndex(0), rxNext(0) {}
 
     // Initialize the slave connection
@@ -128,7 +116,7 @@ namespace Relay{
     void I2CSlave::begin(){
         slave = this;
 
-        wire->begin(addr, sdaPin, sclPin);
+        wire->begin(addr);
 
         wire->onReceive(onI2CReceive);
         wire->onRequest(onI2CRequest);
@@ -136,8 +124,9 @@ namespace Relay{
     
     // this function will stack the bytes to be sent
     // until the master requests those
-    void I2CSlave::sendByte(uint8_t byte, uint8_t){
+    uint8_t I2CSlave::sendByte(uint8_t byte, uint8_t){
         if(txLen < sizeof(txBuffer)) txBuffer[txLen++] = byte;
+        return 0; // Success
     }
 
     // each call of this function will return
@@ -149,9 +138,10 @@ namespace Relay{
         return value;
     }
 
-    // available overriding (remember to implement)
-    int I2CSlave::available(){
-        
+    // available overriding (add later)
+
+    int I2CSlave::available() {
+        return rxBufferIndex;
     }
 
     void I2CSlave::setTimeout(uint32_t timeout){}
