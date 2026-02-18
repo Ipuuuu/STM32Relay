@@ -47,7 +47,7 @@ void ProtocolHandler::processIncomingByte(uint8_t byte) {
 }
 
 void ProtocolHandler::processIncomingBytes() {
-    while(true) {
+    while(tdev->available()) {
         uint8_t byte = tdev->recvByte();
         processIncomingByte(byte);
     }

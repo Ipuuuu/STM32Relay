@@ -5,6 +5,8 @@
 #include <HardwareSerial.h>
 #include <stdint.h>
 
+#include <memory>
+
 namespace Relay{
 // Transmission Device Interface Class
 class TDEV{
@@ -31,18 +33,21 @@ class TDEV{
 // UART Base Class
 class UARTDevice : public TDEV{
     private:
-        uint8_t txPin, rxPin;
+        std::unique_ptr<HardwareSerial> uart_port; // serial port
+        uint8_t txPin, rxPin; // serial pins
         
         uint32_t tout; // timeout
-        uint32_t baud;
+        uint32_t baud; // baud rate
 
     public:
-        HardwareSerial *uart_port; // serial port
-        explicit UARTDevice(uint32_t baud, uint8_t rxPin, uint8_t txPin, HardwareSerial *uartport);
+        explicit UARTDevice(uint32_t baud, uint8_t rxPin, uint8_t txPin);
 
         UARTDevice(const UARTDevice&) = delete;
         UARTDevice &operator=(const UARTDevice&) = delete;
-        ~UARTDevice() = default;
+        UARTDevice(UARTDevice&&) = delete;
+        UARTDevice &operator=(UARTDevice&&) = delete;
+
+        ~UARTDevice();
 
         // will wrap the uart_port.begin() function, possibly with error checks
         void begin() override;
@@ -58,7 +63,6 @@ class UARTDevice : public TDEV{
 
 
         // settimeout of the uart device to be used in necessary functions
-
         void setTimeout(uint32_t timeout) override;
 };
 
@@ -72,14 +76,18 @@ class UARTDevice : public TDEV{
 // I2C Master Class
 class I2CMaster : public TDEV{
     private:
-        TwoWire *wire;
+        std::unique_ptr<TwoWire> wire;
+
     public:
         // SDA and SCL pins can be set at the constructor of the TwoWire object, so no need to set them here
-        explicit I2CMaster(TwoWire *wire);
+        explicit I2CMaster();
 
         I2CMaster(const I2CMaster&) = delete;
         I2CMaster& operator=(const I2CMaster&) = delete;
-        ~I2CMaster() = default;
+        I2CMaster(I2CMaster&&) = delete;
+        I2CMaster& operator=(I2CMaster&&) = delete;
+
+        ~I2CMaster();
 
         // initialize device
         void begin() override;
@@ -105,10 +113,9 @@ class I2CMaster : public TDEV{
 };
 
 class I2CSlave : public TDEV{
-    public:
+    private:
+        std::unique_ptr<TwoWire> wire;
 
-        TwoWire *wire;
-    
         uint8_t rxBuffer[32]; // received buffer
         uint8_t txBuffer[32]; // transmit buffer
         volatile uint8_t rxBufferIndex, rxNext; // rxBufferIndex for receiving, rxNext for byte
@@ -116,12 +123,20 @@ class I2CSlave : public TDEV{
 
         uint8_t addr;
 
+        static I2CSlave *slave; // pointer to slave for static ISR calls
+        static void onI2CReceive(int count); // static ISR for receiving data from master
+        static void onI2CRequest(); // static ISR for sending data to master
+    public:
+
         // SDA and SCL pins can be set at the constructor of the TwoWire object, so no need to set them here
-        explicit I2CSlave(TwoWire *wire, uint8_t address);
+        explicit I2CSlave(uint8_t address);
 
         I2CSlave(const I2CSlave&) = delete;
         I2CSlave& operator=(const I2CSlave&) = delete;
-        ~I2CSlave() = default;
+        I2CSlave(I2CSlave&&) = delete;
+        I2CSlave& operator=(I2CSlave&&) = delete;
+
+        ~I2CSlave();
 
         void begin() override;
         

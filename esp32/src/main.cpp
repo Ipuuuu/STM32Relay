@@ -6,13 +6,13 @@
 using namespace Relay;
 
 /* 
-UARTDevice uartDev(115200, D8, D9, &Serial1); // UARTDevice object for Serial1 communication
-STM32Relay myRelay(&uartDev);
+UARTDevice uartDev{115200, D8, D9}; // UARTDevice object for Serial1 communication
+STM32Relay myRelay{&uartDev};
 //*/
 
 /* */
-I2CMaster i2cDev(&Wire); // I2CDevice object for I2C communication
-STM32Relay myRelay(&i2cDev); 
+I2CMaster i2cDev{}; // I2CDevice object for I2C communication
+STM32Relay myRelay{&i2cDev}; 
 //*/
 
 uint8_t brightness= 0;
@@ -50,31 +50,14 @@ void testServo() {
 void setup(){
     Serial.begin(115200);
     myRelay.begin();
-    delay(1000);
+    delay(100);
     Serial.println("Deneyap-STM32 Relay Starting...");
 
-    //myRelay.pinMode(STM32Relay::PB5, OUTPUT);
-    myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
+    myRelay.pinMode(STM32Relay::PB5, OUTPUT);
+    //myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
 
 
 }
-
-//  TESTING UART
-// 1. DIGWRITE: Pass
-// 2. ANALOGWRITE: PASS
-// 3. ANALOGREAD: PASS
-// 4. DIGITALREAD: PASS
-// 5. SERVO: PASS
-
-// TESTING I2C
-// 1. DIGWRITE: PARTIAL
-//    - Sends the commands, receiver receives and executets but nothing happens
-//    - Will look on later (
-//      - Possible Cases:
-//        - Faulty LED/WIRING/CONNECTIONS
-//        - I2C code issues (very unlikely but should investigate)
-//        - )
-
 
 void loop(){
     // #################################

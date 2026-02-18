@@ -6,17 +6,26 @@ namespace Receiver{
     /* UART Device Implementation */
     // ###########################
 
-    UARTDevice::UARTDevice(uint32_t baud, uint8_t rxPin, uint8_t txPin, HardwareSerial *uartport)
-        : tout(1000), baud(baud), rxPin(rxPin), txPin(txPin), uart_port(uartport){}
+    UARTDevice::UARTDevice(uint32_t baud, uint8_t rxPin, uint8_t txPin)
+        : tout(1000), baud(baud), rxPin(rxPin), txPin(txPin){
+    
+        #ifdef ARDUINO_ARCH_STM32
+            uart_port = std::make_unique<HardwareSerial>(rxPin, txPin);
+        #else
+            uart_port = std::make_unique<HardwareSerial>(1); // UART1
+        #endif
+    }
+
+    UARTDevice::~UARTDevice(){}
+
     void UARTDevice::begin(){
         #ifdef ARDUINO_ARCH_STM32
-        // For STM32, use the pin-defined begin
-        uart_port->begin(baud);
+            uart_port->begin(baud);
         #else
-        // For other platforms, standard begin
-        uart_port->begin(baud,rxPin,txPin);
+            uart_port->begin(baud, SERIAL_8N1, rxPin, txPin); // UART1
         #endif
         
+        // remove any existing bytes in the buffer
         while(uart_port->available()) {
             uart_port->read();
         }
@@ -45,13 +54,22 @@ namespace Receiver{
     /* I2C Master Implementation */
     // ###########################
 
-    I2CMaster::I2CMaster(TwoWire *wire)
-        : wire(wire) {}
+    I2CMaster::I2CMaster() {
+        #ifdef ARDUINO_ARCH_STM32
+            wire = std::make_unique<TwoWire>();
+        #else
+            wire = std::make_unique<TwoWire>(0); // I2C0
+        #endif
+    }
+
+    I2CMaster::~I2CMaster() {}
 
     void I2CMaster::begin(){
-        // should add error checks for
-        // platforms that do not support pin defined I2C
-        wire->begin();
+        #ifdef ARDUINO_ARCH_STM32
+            wire->begin();
+        #else
+            wire->begin(SDA, SCL); // ESP32 default pins, or pass custom ones
+        #endif
     }
 
     uint8_t I2CMaster::sendByte(uint8_t byte, uint8_t addr){
@@ -88,35 +106,49 @@ namespace Receiver{
 
 
     // Slave pointer for static ISR calls
-    static I2CSlave *slave = nullptr;
+    I2CSlave* I2CSlave::slave = nullptr;
 
     // Static ISR calls
 
-    static void onI2CReceive(int count){
+    // called on master write to slave, reads bytes into rxBuffer
+    void I2CSlave::onI2CReceive(int count){
         if(!slave) return;
-        while(Wire.available() && slave->rxBufferIndex < sizeof(slave->rxBuffer)){
-            slave->rxBuffer[slave->rxBufferIndex++] = Wire.read();
+        while(slave->wire->available() && (slave->rxBufferIndex < sizeof(slave->rxBuffer))){
+            slave->rxBuffer[slave->rxBufferIndex++] = slave->wire->read();
         }
     }
 
-    static void onI2CRequest(){
+    // called on master read from slave, writes bytes from txBuffer
+    void I2CSlave::onI2CRequest(){
         if(!slave) return;
-        for(uint8_t i = 0; i < slave->txLen; i++) Wire.write(slave->txBuffer[i]);
+        for(uint8_t i = 0; i < slave->txLen; i++) slave->wire->write(slave->txBuffer[i]);
         slave->txLen = 0;
         slave->txBufferIndex = 0;
     }
 
 
-    I2CSlave::I2CSlave(TwoWire *wire, uint8_t address)
-        : wire(wire), addr(address), txLen(0), 
-          txBufferIndex(0), rxBufferIndex(0), rxNext(0) {}
+    I2CSlave::I2CSlave(uint8_t address)
+        : addr(address), txLen(0), 
+          txBufferIndex(0), rxBufferIndex(0), rxNext(0) {
+            #ifdef ARDUINO_ARCH_STM32
+                wire = std::make_unique<TwoWire>();
+            #else
+                wire = std::make_unique<TwoWire>(0); // I2C0
+            #endif
+        }
+
+    I2CSlave::~I2CSlave() {}
 
     // Initialize the slave connection
     // sets the address to addr
     void I2CSlave::begin(){
         slave = this;
 
-        wire->begin(addr);
+        #ifdef ARDUINO_ARCH_STM32
+            wire->begin(addr);
+        #else
+            wire->begin(SDA, SCL, addr); // ESP32 default pins, or pass custom ones
+        #endif
 
         wire->onReceive(onI2CReceive);
         wire->onRequest(onI2CRequest);
@@ -133,8 +165,10 @@ namespace Receiver{
     // the next byte from the received byte stream
     uint8_t I2CSlave::recvByte(uint8_t){
         if(rxBufferIndex == 0) return 0xFF;
+        noInterrupts();
         uint8_t value = rxBuffer[rxNext++];
         if(rxNext == rxBufferIndex) rxNext = rxBufferIndex = 0;
+        interrupts();
         return value;
     }
 
