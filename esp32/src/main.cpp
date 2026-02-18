@@ -5,15 +5,13 @@
 
 using namespace Relay;
 
-/* 
-UARTDevice uartDev{115200, D8, D9}; // UARTDevice object for Serial1 communication
-STM32Relay myRelay{&uartDev};
-//*/
+// UART
+//UARTDevice uartDev{115200, D8, D9}; // UARTDevice object for Serial1 communication
+//STM32Relay myRelay{&uartDev};
 
-/* */
+// I2C Test
 I2CMaster i2cDev{}; // I2CDevice object for I2C communication
 STM32Relay myRelay{&i2cDev}; 
-//*/
 
 uint8_t brightness= 0;
 uint8_t fadeAmt = 5;
@@ -50,10 +48,10 @@ void testServo() {
 void setup(){
     Serial.begin(115200);
     myRelay.begin();
-    delay(100);
+    delay(3000);
     Serial.println("Deneyap-STM32 Relay Starting...");
 
-    myRelay.pinMode(STM32Relay::PB5, OUTPUT);
+    myRelay.pinMode(STM32Relay::PB5, OUTPUT, 0x42);
     //myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
 
 

@@ -113,8 +113,9 @@ namespace Relay{
     // called on master write to slave, reads bytes into rxBuffer
     void I2CSlave::onI2CReceive(int count){
         if(!slave) return;
-        while(slave->wire->available() && (slave->rxBufferIndex < sizeof(slave->rxBuffer))){
-            slave->rxBuffer[slave->rxBufferIndex++] = slave->wire->read();
+        while(slave->wire->available()){
+            uint8_t x = slave->wire->read();
+            if(slave->rxBufferIndex < sizeof(slave->rxBuffer)) slave->rxBuffer[slave->rxBufferIndex++] = x;
         }
     }
 
@@ -164,10 +165,15 @@ namespace Relay{
     // each call of this function will return
     // the next byte from the received byte stream
     uint8_t I2CSlave::recvByte(uint8_t){
-        if(rxBufferIndex == 0) return 0xFF;
         noInterrupts();
+        if(rxNext >= rxBufferIndex){
+            rxNext = rxBufferIndex = 0;
+            interrupts();
+            return 0xFF;
+        }
+        
         uint8_t value = rxBuffer[rxNext++];
-        if(rxNext == rxBufferIndex) rxNext = rxBufferIndex = 0;
+        if(rxNext >= rxBufferIndex) rxNext = rxBufferIndex = 0;
         interrupts();
         return value;
     }

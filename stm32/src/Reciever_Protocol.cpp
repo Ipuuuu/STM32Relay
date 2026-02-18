@@ -1,3 +1,4 @@
+#include <memory>
 #include "ReceiverProtocol.h"
 
 namespace Receiver {
@@ -49,14 +50,16 @@ void ProtocolHandler::processIncomingByte(uint8_t byte) {
 void ProtocolHandler::processIncomingBytes() {
     while(tdev->available()) {
         uint8_t byte = tdev->recvByte();
-        processIncomingByte(byte);
+        if(byte != 0xFF) processIncomingByte(byte);
     }
 }
 
 void ProtocolHandler::handleIdleState(uint8_t byte) {
     // Verify sync bit (must be 1 for command byte)
     if((byte & 0x80) == 0) {
+#ifdef TESTMODE
         Serial.println("[ERROR] Missing sync bit in command byte");
+#endif
         return;
     }
     

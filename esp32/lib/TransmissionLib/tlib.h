@@ -8,6 +8,7 @@
 #include <memory>
 
 namespace Relay{
+    
 // Transmission Device Interface Class
 class TDEV{
     
@@ -66,13 +67,6 @@ class UARTDevice : public TDEV{
         void setTimeout(uint32_t timeout) override;
 };
 
-
-
-        // Extra Functionality to add later:
-        // When I2C device is created, it will call the scanbus() function
-        // to check hardcoded addresses and possibly query the connected
-        // devices for their pinout informations if requested
-
 // I2C Master Class
 class I2CMaster : public TDEV{
     private:
@@ -106,10 +100,6 @@ class I2CMaster : public TDEV{
         // should better write later with MACRO checks for 
         // WIRE_HAS_TIMEOUT
         void setTimeout(uint32_t timeout) override;
-
-        // A function like setSlave can be written to set the
-        // slave address for multiple calls, but for now
-        // each sendByte and recvByte will have the address parameter
 };
 
 class I2CSlave : public TDEV{
