@@ -4,7 +4,10 @@
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include "ECC.h"
+#include "tlib.h"
 #include <Servo.h>
+
+
 
 namespace Receiver {
 
@@ -27,7 +30,7 @@ public:
 };
 
 private:
-    HardwareSerial* uart_port;
+    TDEV* tdev; // transmission device
     State currentState;
     Relay::Packet currentPacket;
     int expectedDataBytes;
@@ -40,10 +43,11 @@ private:
     } servoMap[10];
 
 public:
-    ProtocolHandler(HardwareSerial* port);
+    ProtocolHandler(TDEV* tdev);
     
-    void begin(uint32_t baud);
+    void begin(){tdev->begin();}
     void processIncomingByte(uint8_t byte);
+    void processIncomingBytes();
 
     void attachServo(uint8_t pin);
     void detachServo(uint8_t pin);
