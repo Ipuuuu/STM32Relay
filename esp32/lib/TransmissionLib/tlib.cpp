@@ -37,6 +37,12 @@ namespace Relay{
         return 0; // Success
     }
 
+    uint8_t UARTDevice::sendBytes(const uint8_t *bytes, size_t length, uint8_t addr){
+        uart_port->write(bytes, length);
+        uart_port->flush();
+        return 0; // Success
+    }
+
     uint8_t UARTDevice::recvByte(uint8_t addr){
         return uart_port->read();
     }
@@ -47,6 +53,10 @@ namespace Relay{
 
     void UARTDevice::setTimeout(const uint32_t timeout){
         tout = timeout;
+    }
+
+    void UARTDevice::recoverIfNeeded(){
+        // No specific recovery needed for UART, but could implement checks here if desired
     }
 
 
@@ -74,10 +84,16 @@ namespace Relay{
 
     uint8_t I2CMaster::sendByte(uint8_t byte, uint8_t addr){
         wire->beginTransmission(addr);
-            wire->write(byte);
+        wire->write(byte);
 
-            // TO-DO: error checking for endTranmission() return values
-            return wire->endTransmission();
+        return wire->endTransmission();
+    }
+
+    uint8_t I2CMaster::sendBytes(const uint8_t *bytes, size_t length, uint8_t addr){
+        wire->beginTransmission(addr);
+        wire->write(bytes, length);
+
+        return wire->endTransmission();
     }
 
     uint8_t I2CMaster::recvByte(uint8_t saddr){
@@ -100,6 +116,17 @@ namespace Relay{
         #endif
     }
 
+    void I2CMaster::recoverIfNeeded(){
+        #ifdef ARDUINO_ARCH_STM32
+            // Check if the bus is stuck (SDA or SCL pulled low)
+            if(!digitalRead(SDA) || !digitalRead(SCL)){
+                wire->end();
+                delay(10);
+                begin();
+            }
+        #endif
+    }
+
     // ###########################
     /* I2C Slave Implementation */
     // ###########################
@@ -113,6 +140,8 @@ namespace Relay{
     // called on master write to slave, reads bytes into rxBuffer
     void I2CSlave::onI2CReceive(int count){
         if(!slave) return;
+        slave->lastReceiveTime = millis();
+        slave->busActive = true;
         while(slave->wire->available()){
             uint8_t x = slave->wire->read();
             if(slave->rxBufferIndex < sizeof(slave->rxBuffer)) slave->rxBuffer[slave->rxBufferIndex++] = x;
@@ -122,7 +151,11 @@ namespace Relay{
     // called on master read from slave, writes bytes from txBuffer
     void I2CSlave::onI2CRequest(){
         if(!slave) return;
-        for(uint8_t i = 0; i < slave->txLen; i++) slave->wire->write(slave->txBuffer[i]);
+        if(slave->txLen == 0) {
+            slave->wire->write(0xFF); // send dummy byte to prevent clock stretch hang
+        } else {
+            for(uint8_t i = 0; i < slave->txLen; i++) slave->wire->write(slave->txBuffer[i]);
+        }
         slave->txLen = 0;
         slave->txBufferIndex = 0;
     }
@@ -130,7 +163,8 @@ namespace Relay{
 
     I2CSlave::I2CSlave(uint8_t address)
         : addr(address), txLen(0), 
-          txBufferIndex(0), rxBufferIndex(0), rxNext(0) {
+          txBufferIndex(0), rxBufferIndex(0), rxNext(0),
+          lastReceiveTime(0), busActive(false) {
             #ifdef ARDUINO_ARCH_STM32
                 wire = std::make_unique<TwoWire>();
             #else
@@ -162,6 +196,14 @@ namespace Relay{
         return 0; // Success
     }
 
+    uint8_t I2CSlave::sendBytes(const uint8_t *bytes, size_t length, uint8_t addr){
+        for(size_t i = 0; i < length; i++){
+            if(txLen < sizeof(txBuffer)) txBuffer[txLen++] = bytes[i];
+            else break; // Buffer full, stop adding more bytes
+        }
+        return 0; // Success
+    }
+
     // each call of this function will return
     // the next byte from the received byte stream
     uint8_t I2CSlave::recvByte(uint8_t){
@@ -181,8 +223,25 @@ namespace Relay{
     // available overriding (add later)
 
     int I2CSlave::available() {
-        return rxBufferIndex;
+        noInterrupts();
+        int count = rxBufferIndex - rxNext;
+        interrupts();
+        return count;
     }
 
     void I2CSlave::setTimeout(uint32_t timeout){}
+
+    void I2CSlave::recoverIfNeeded(){
+        #ifdef ARDUINO_ARCH_STM32
+            if(!busActive) return;
+            if((millis() - lastReceiveTime) < I2C_TIMEOUT_MS) return;
+
+            // Bus was active but no data for too long - likely stuck
+            wire->end();
+            delay(50);
+            begin();
+            
+            lastReceiveTime = millis();
+        #endif
+    }
 };

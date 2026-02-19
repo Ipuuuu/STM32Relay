@@ -7,7 +7,7 @@
 #include "tlib.h"
 #include <Servo.h>
 
-
+#include "config.h"
 
 namespace Receiver {
 
@@ -46,6 +46,7 @@ public:
     ProtocolHandler(TDEV* tdev);
     
     void begin(){tdev->begin();}
+    void recover() {tdev->recover();}
     void processIncomingByte(uint8_t byte);
     void processIncomingBytes();
 

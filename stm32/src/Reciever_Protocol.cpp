@@ -22,6 +22,7 @@ void ProtocolHandler::resetState() {
 }
 
 void ProtocolHandler::processIncomingByte(uint8_t byte) {
+#ifdef TESTMODE
     Serial.print("\n[RX] Byte: 0x");
     Serial.print(byte, HEX);
     Serial.print(" = 0b");
@@ -30,6 +31,7 @@ void ProtocolHandler::processIncomingByte(uint8_t byte) {
     }
     Serial.print(" | State: ");
     Serial.println(currentState);
+#endif
     
     switch(currentState) {
         case IDLE:
@@ -69,18 +71,21 @@ void ProtocolHandler::handleIdleState(uint8_t byte) {
     // Verify parity on command byte
     uint8_t calcParity = Relay::parity3(static_cast<uint8_t>(currentPacket.commandByte.command));
     if(calcParity != currentPacket.commandByte.parity) {
+#ifdef TESTMODE
         Serial.println("[ERROR] Command parity mismatch!");
         Serial.print("Expected: "); Serial.print(calcParity);
         Serial.print(", Got: "); Serial.println(currentPacket.commandByte.parity);
+#endif
         sendRetransmitRequest();
         resetState();
         return;
     }
-    
+#ifdef TESTMODE
     Serial.print("[COMMAND] Type: 0b");
     Serial.print(static_cast<uint8_t>(currentPacket.commandByte.command), BIN);
     Serial.print(", ECC: 0b");
     Serial.println(currentPacket.commandByte.ecc, BIN);
+#endif
     
     expectedDataBytes = currentPacket.commandByte.requiresData();
     receivedDataBytes = 0;
@@ -90,7 +95,9 @@ void ProtocolHandler::handleIdleState(uint8_t byte) {
 void ProtocolHandler::handleReadingPortState(uint8_t byte) {
     // Verify sync bit (must be 0 for data byte)
     if((byte & 0x80) != 0) {
+#ifdef TESTMODE
         Serial.println("[ERROR] Unexpected sync bit in port byte");
+#endif
         resetState();
         return;
     }
@@ -101,14 +108,17 @@ void ProtocolHandler::handleReadingPortState(uint8_t byte) {
     // Verify parity on port byte
     uint8_t calcParity = Relay::parity6(currentPacket.port.data);
     if(calcParity != currentPacket.port.parity) {
+#ifdef TESTMODE
         Serial.println("[ERROR] Port parity mismatch!");
+#endif
         sendRetransmitRequest();
         resetState();
         return;
     }
-    
+#ifdef TESTMODE
     Serial.print("[PORT] Pin: ");
     Serial.println(currentPacket.port.data);
+#endif
     
     // Perform ECC check and correction on command-port pair
     auto [errorByte, errorBit] = currentPacket.locateCorruptBit(
@@ -117,10 +127,12 @@ void ProtocolHandler::handleReadingPortState(uint8_t byte) {
     );
     
     if(errorByte != 0) {
+#ifdef TESTMODE
         Serial.print("[ECC] Error detected in byte ");
         Serial.print(errorByte);
         Serial.print(", bit ");
         Serial.println(errorBit);
+#endif
         
         // Correct the error
         if(errorByte == 1) {
@@ -131,12 +143,16 @@ void ProtocolHandler::handleReadingPortState(uint8_t byte) {
             currentPacket.commandByte.parity = Relay::parity3(
                 static_cast<uint8_t>(currentPacket.commandByte.command)
             );
+#ifdef TESTMODE
             Serial.println("[ECC] Command byte corrected");
+#endif
         } else if(errorByte == 2) {
             // Error in port byte
             currentPacket.port.data ^= (1 << errorBit);
             currentPacket.port.parity = Relay::parity6(currentPacket.port.data);
+#ifdef TESTMODE
             Serial.println("[ECC] Port byte corrected");
+#endif
         }
     }
     
@@ -152,7 +168,9 @@ void ProtocolHandler::handleReadingPortState(uint8_t byte) {
 void ProtocolHandler::handleReadingData1State(uint8_t byte) {
     // Verify sync bit (must be 0 for data byte)
     if((byte & 0x80) != 0) {
+#ifdef TESTMODE
         Serial.println("[ERROR] Unexpected sync bit in data[0] byte");
+#endif
         resetState();
         return;
     }
@@ -163,14 +181,17 @@ void ProtocolHandler::handleReadingData1State(uint8_t byte) {
     // Verify parity
     uint8_t calcParity = Relay::parity6(currentPacket.data[0].data);
     if(calcParity != currentPacket.data[0].parity) {
+#ifdef TESTMODE
         Serial.println("[ERROR] Data[0] parity mismatch!");
+#endif
         sendRetransmitRequest();
         resetState();
         return;
     }
-    
+#ifdef TESTMODE
     Serial.print("[DATA0] Value: 0b");
     Serial.println(currentPacket.data[0].data, BIN);
+#endif
     
     // Perform ECC check on command-data[0] pair
     auto [errorByte, errorBit] = currentPacket.locateCorruptBit(
@@ -179,10 +200,12 @@ void ProtocolHandler::handleReadingData1State(uint8_t byte) {
     );
     
     if(errorByte != 0) {
+#ifdef TESTMODE
         Serial.print("[ECC] Error in data[0] pair, byte ");
         Serial.print(errorByte);
         Serial.print(", bit ");
         Serial.println(errorBit);
+#endif
         
         if(errorByte == 1) {
             currentPacket.commandByte.command = static_cast<Relay::CommandByte::COMMAND_TYPE>(
@@ -210,7 +233,9 @@ void ProtocolHandler::handleReadingData1State(uint8_t byte) {
 void ProtocolHandler::handleReadingData2State(uint8_t byte) {
     // Verify sync bit (must be 0 for data byte)
     if((byte & 0x80) != 0) {
+#ifdef TESTMODE
         Serial.println("[ERROR] Unexpected sync bit in data[1] byte");
+#endif
         resetState();
         return;
     }
@@ -221,14 +246,17 @@ void ProtocolHandler::handleReadingData2State(uint8_t byte) {
     // Verify parity
     uint8_t calcParity = Relay::parity6(currentPacket.data[1].data);
     if(calcParity != currentPacket.data[1].parity) {
+#ifdef TESTMODE
         Serial.println("[ERROR] Data[1] parity mismatch!");
+#endif
         sendRetransmitRequest();
         resetState();
         return;
     }
-    
+#ifdef TESTMODE
     Serial.print("[DATA1] Value: 0b");
     Serial.println(currentPacket.data[1].data, BIN);
+#endif
     
     // Perform ECC check on command-data[1] pair
     auto [errorByte, errorBit] = currentPacket.locateCorruptBit(
@@ -237,10 +265,12 @@ void ProtocolHandler::handleReadingData2State(uint8_t byte) {
     );
     
     if(errorByte != 0) {
+#ifdef TESTMODE
         Serial.print("[ECC] Error in data[1] pair, byte ");
         Serial.print(errorByte);
         Serial.print(", bit ");
         Serial.println(errorBit);
+#endif
         
         if(errorByte == 1) {
             currentPacket.commandByte.command = static_cast<Relay::CommandByte::COMMAND_TYPE>(
@@ -261,51 +291,71 @@ void ProtocolHandler::handleReadingData2State(uint8_t byte) {
 }
 
 void ProtocolHandler::executeCommand() {
+    uint8_t pin = currentPacket.port.data;
+#ifdef TESTMODE
     Serial.println("\n=== EXECUTING COMMAND ===");
     Serial.print("Command: ");
     Serial.println(static_cast<uint8_t>(currentPacket.commandByte.command));
-    Serial.print("Pin: ");
-    Serial.println(currentPacket.port.data);
+    Serial.print("Relay Pin: ");
+    Serial.print(currentPacket.port.data);
+    Serial.print(" -> STM32 Pin: ");
+    Serial.println(pin);
+#endif
     
     switch(currentPacket.commandByte.command) {
         case Relay::CommandByte::CMD_SET_PIN_MODE: {
             uint8_t mode = currentPacket.data[0].data;
+#ifdef TESTMODE
             Serial.print("[EXEC] pinMode -> ");
-
+#endif
             if(mode == 0x01){//deneyaps OUTPUT
-                pinMode(currentPacket.port.data, OUTPUT);
+                pinMode(pin, OUTPUT);
+#ifdef TESTMODE
                 Serial.print(mode); Serial.println(" OUTPUT");
+#endif
             }
             else if(mode == 0x03){//deneyaps INPUT_PULLUP
-                pinMode(currentPacket.port.data, INPUT_PULLUP);
+                pinMode(pin, INPUT_PULLUP);
+#ifdef TESTMODE
                 Serial.print(mode); Serial.println(" INPUT_PULLUP");
+#endif
             }
             else if(mode == 0x09){// deneyaps INPUT_PULLDOWN
-                pinMode(currentPacket.port.data, INPUT_PULLDOWN);
+                pinMode(pin, INPUT_PULLDOWN);
+#ifdef TESTMODE
                 Serial.print(mode); Serial.println(" INPUT_PULLDOWN");
+#endif
             }
             else{// same INPUT
-                pinMode(currentPacket.port.data, mode);
+                pinMode(pin, mode);
+#ifdef TESTMODE
                 Serial.print(mode); Serial.println(" INPUT");
+#endif
             }
             
             break;
         }
         
         case Relay::CommandByte::CMD_D_W_LOW:
-            digitalWrite(currentPacket.port.data, LOW);
+            digitalWrite(pin, LOW);
+#ifdef TESTMODE
             Serial.println("[EXEC] digitalWrite -> LOW");
+#endif
             break;
             
         case Relay::CommandByte::CMD_D_W_HIGH:
-            digitalWrite(currentPacket.port.data, HIGH);
+            digitalWrite(pin, HIGH);
+#ifdef TESTMODE
             Serial.println("[EXEC] digitalWrite -> HIGH");
+#endif
             break;
             
         case Relay::CommandByte::CMD_D_R: {
-            bool value = digitalRead(currentPacket.port.data);
+            bool value = digitalRead(pin);
+#ifdef TESTMODE
             Serial.print("[EXEC] digitalRead -> ");
             Serial.println(value ? "HIGH" : "LOW");
+#endif
             sendDigitalReadResponse(currentPacket.port.data, value);
             break;
         }
@@ -315,16 +365,20 @@ void ProtocolHandler::executeCommand() {
             uint16_t value = ((currentPacket.data[0].data & 0x3F) << 6) | 
                             (currentPacket.data[1].data & 0x3F);
             uint8_t value8bit = value >> 4;  // Convert to 8-bit
-            analogWrite(currentPacket.port.data, value8bit);
+            analogWrite(pin, value8bit);
+#ifdef TESTMODE
             Serial.print("[EXEC] analogWrite -> ");
             Serial.println(value);
+#endif
             break;
         }
         
         case Relay::CommandByte::CMD_A_R: {
-            uint16_t value = analogRead(currentPacket.port.data);
+            uint16_t value = analogRead(pin);
+#ifdef TESTMODE
             Serial.print("[EXEC] analogRead -> ");
             Serial.println(value);
+#endif
             sendAnalogReadResponse(currentPacket.port.data, value);
             break;
         }
@@ -332,17 +386,18 @@ void ProtocolHandler::executeCommand() {
         case Relay::CommandByte::CMD_SET_PPM: {
     uint16_t microseconds = ((currentPacket.data[0].data & 0x3F) << 6) | 
                            (currentPacket.data[1].data & 0x3F);
-    
+#ifdef TESTMODE
     Serial.print("[EXEC] writePPM -> Pin ");
-    Serial.print(currentPacket.port.data);
+    Serial.print(pin);
     Serial.print(", ");
     Serial.print(microseconds);
     Serial.println(" us");
+#endif
     
     // Find or attach servo
     int servoIndex = -1;
     for(int i = 0; i < servoCount; i++) {
-        if(servoMap[i].pin == currentPacket.port.data && servoMap[i].attached) {
+        if(servoMap[i].pin == pin && servoMap[i].attached) {
             servoIndex = i;
             break;
         }
@@ -350,10 +405,10 @@ void ProtocolHandler::executeCommand() {
     
     // Attach if not found
     if(servoIndex == -1) {
-        attachServo(currentPacket.port.data);
+        attachServo(pin);
         // Find the newly attached servo
         for(int i = 0; i < servoCount; i++) {
-            if(servoMap[i].pin == currentPacket.port.data && servoMap[i].attached) {
+            if(servoMap[i].pin == pin && servoMap[i].attached) {
                 servoIndex = i;
                 break;
             }
@@ -363,9 +418,13 @@ void ProtocolHandler::executeCommand() {
     // Write pulse width
     if(servoIndex >= 0) {
         servos[servoIndex].writeMicroseconds(microseconds);
+#ifdef TESTMODE
         Serial.println("[SERVO] Position updated");
+#endif
     } else {
+#ifdef TESTMODE
         Serial.println("[ERROR] Failed to control servo");
+#endif
     }
     
     break;
@@ -373,13 +432,17 @@ void ProtocolHandler::executeCommand() {
 
         
         default:
+#ifdef TESTMODE
             Serial.println("[ERROR] Unknown command!");
+#endif
             break;
     }
 }
 
 void ProtocolHandler::sendDigitalReadResponse(uint8_t pin, bool value) {
+#ifdef TESTMODE
     Serial.println("\n[TX] Sending digitalRead response");
+#endif
     
     Relay::Packet responsePacket;
     
@@ -410,14 +473,18 @@ void ProtocolHandler::sendDigitalReadResponse(uint8_t pin, bool value) {
     tdev->sendByte(byte1);
     tdev->sendByte(byte2);
     
+#ifdef TESTMODE
     Serial.print("[TX] Sent: 0x");
     Serial.print(byte1, HEX);
     Serial.print(" 0x");
     Serial.println(byte2, HEX);
+#endif
 }
 
 void ProtocolHandler::sendAnalogReadResponse(uint8_t pin, uint16_t value) {
+#ifdef TESTMODE
     Serial.println("\n[TX] Sending analogRead response");
+#endif
     
     Relay::Packet responsePacket;
     
@@ -461,6 +528,7 @@ void ProtocolHandler::sendAnalogReadResponse(uint8_t pin, uint16_t value) {
     tdev->sendByte(byte3);
     tdev->sendByte(byte4);
     
+#ifdef TESTMODE
     Serial.print("[TX] Sent: 0x");
     Serial.print(byte1, HEX);
     Serial.print(" 0x");
@@ -469,10 +537,13 @@ void ProtocolHandler::sendAnalogReadResponse(uint8_t pin, uint16_t value) {
     Serial.print(byte3, HEX);
     Serial.print(" 0x");
     Serial.println(byte4, HEX);
+#endif
 }
 
 void ProtocolHandler::sendRetransmitRequest() {
+#ifdef TESTMODE
     Serial.println("\n[TX] Sending RETRANSMIT request");
+#endif
     
     Relay::Packet responsePacket;
     
@@ -488,8 +559,10 @@ void ProtocolHandler::sendRetransmitRequest() {
     uint8_t byte = *reinterpret_cast<uint8_t*>(&responsePacket.commandByte);
     tdev->sendByte(byte);
     
+#ifdef TESTMODE
     Serial.print("[TX] Sent: 0x");
     Serial.println(byte, HEX);
+#endif
 }
 
 
@@ -509,14 +582,16 @@ void ProtocolHandler::attachServo(uint8_t pin) {
             servoMap[i].pin = pin;
             servoMap[i].attached = true;
             if(i >= servoCount) servoCount = i + 1;
-            
+#ifdef TESTMODE           
             Serial.print("[SERVO] Attached to pin ");
             Serial.println(pin);
+#endif
             return;
         }
     }
-    
+#ifdef TESTMODE
     Serial.println("[ERROR] No free servo slots!");
+#endif
 }
 
 void ProtocolHandler::detachServo(uint8_t pin) {
@@ -524,8 +599,10 @@ void ProtocolHandler::detachServo(uint8_t pin) {
         if(servoMap[i].pin == pin && servoMap[i].attached) {
             servos[i].detach();
             servoMap[i].attached = false;
+#ifdef TESTMODE
             Serial.print("[SERVO] Detached from pin ");
             Serial.println(pin);
+#endif
             return;
         }
     }

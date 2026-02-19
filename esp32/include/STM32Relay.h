@@ -7,6 +7,7 @@
 #include "ECC.h"
 
 #include "tlib.h"
+#include "config.h"
 
 #define SYNC_BIT 0b10000000
 #define PARITY_BIT 0b01000000
@@ -122,8 +123,13 @@ private:
 public:
     // STM32Relay constructor
     // @param tdev : transmission device pointer
-    STM32Relay(TDEV *tdev);
-    
+    explicit STM32Relay(TDEV *tdev);
+
+    STM32Relay(const STM32Relay&) = delete; // delete copy constructor
+    STM32Relay& operator=(const STM32Relay&) = delete; // delete copy assignment
+
+    STM32Relay(STM32Relay&&);
+    STM32Relay& operator=(STM32Relay&&);
 
     inline TDEV *getTDEV() const{ return tdev; }
     inline TDEV *getTDEV(){ return tdev; }
@@ -131,6 +137,7 @@ public:
     // low-level commands
     inline void begin() {tdev->begin();}
     inline void sendByte(uint8_t byte, uint8_t addr = 0x00);
+    inline void sendBytes(const uint8_t *bytes, size_t length, uint8_t addr = 0x00);
     inline void recvByte(uint8_t addr = 0x00) {tdev->recvByte(addr);}
     inline void setTimeout(uint32_t timeout) {tdev->setTimeout(timeout);}
     
@@ -148,37 +155,43 @@ public:
 
 };
 
-extern STM32Relay relay; //global relay object
 
-//global function wrappers
-inline void begin(){
-    relay.getTDEV()->begin();
-}
-inline void sendByte(uint8_t byte, uint8_t addr = 0x00){
-    relay.getTDEV()->sendByte(byte, addr);
-}
-inline uint8_t recvByte(uint8_t addr = 0x00){
-    return relay.getTDEV()->recvByte(addr);
-}
-inline void digitalWrite(uint8_t pin, uint8_t value, uint8_t addr = 0x00){
-    relay.digitalWrite(pin, value, addr);
-}
-inline bool digitalRead(uint8_t pin, uint8_t addr = 0x00){
-    return relay.digitalRead(pin, addr);
-}
-inline void analogWrite(uint8_t pin, uint8_t value, uint8_t addr = 0x00){
-    relay.analogWrite(pin, value, addr);
-}
-inline int analogRead(uint8_t pin, uint8_t addr = 0x00){
-    return relay.analogRead(pin, addr);
-}
-inline void writePPM(uint8_t pin, uint32_t microseconds, uint8_t addr = 0x00){
-    relay.writePPM(pin, microseconds, addr);
-}
-inline void setTimeout(uint32_t timeout){
-    relay.getTDEV()->setTimeout(timeout);
 
-}
+// Global relay object needs to be rechecked and reimplemented
+// because we need to pass TDEV pointer to the constructor, and we want to avoid static initialization order issues.
+// One possible solution is to use a singleton pattern or a factory function to create and access the global relay object.
+
+// extern STM32Relay relay; //global relay object
+
+// //global function wrappers
+// inline void begin(){
+//     relay.getTDEV()->begin();
+// }
+// inline void sendByte(uint8_t byte, uint8_t addr = 0x00){
+//     relay.getTDEV()->sendByte(byte, addr);
+// }
+// inline uint8_t recvByte(uint8_t addr = 0x00){
+//     return relay.getTDEV()->recvByte(addr);
+// }
+// inline void digitalWrite(uint8_t pin, uint8_t value, uint8_t addr = 0x00){
+//     relay.digitalWrite(pin, value, addr);
+// }
+// inline bool digitalRead(uint8_t pin, uint8_t addr = 0x00){
+//     return relay.digitalRead(pin, addr);
+// }
+// inline void analogWrite(uint8_t pin, uint8_t value, uint8_t addr = 0x00){
+//     relay.analogWrite(pin, value, addr);
+// }
+// inline int analogRead(uint8_t pin, uint8_t addr = 0x00){
+//     return relay.analogRead(pin, addr);
+// }
+// inline void writePPM(uint8_t pin, uint32_t microseconds, uint8_t addr = 0x00){
+//     relay.writePPM(pin, microseconds, addr);
+// }
+// inline void setTimeout(uint32_t timeout){
+//     relay.getTDEV()->setTimeout(timeout);
+
+// }
 
 }
 
