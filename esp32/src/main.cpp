@@ -91,7 +91,7 @@ void loop(){
 
 
 #ifdef TESTMODE_ANALOG_WRITE
-    myRelay.analogWrite(STM32Relay::PB5, brightness, 0x42);
+    myRelay.analogWrite(STM32Relay::PA8, brightness, 0x42);
     brightness = brightness + fadeAmt;
     if(brightness == 0 || brightness == 255){
         fadeAmt = -fadeAmt; 

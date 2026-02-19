@@ -4,12 +4,15 @@
 #define I2C_ADDRESS 0x42
 
 // uncomment to enable debug prints
-#define TESTMODE
+//#define TESTMODE
 
 // uncomment to enable UART test mode
 //#define TESTMODE_UART
 
 // uncomment to enable I2C test mode
+// NOTE: When using I2C on STM32F1, TIM3 pins (PB5, PA7, PB0, PB1)
+// are unavailable for PWM. Use TIM1 pins (PA8, PA9, PA10) or 
+// TIM4 pins (PB8, PB9) for analogWrite instead.
 #define TESTMODE_I2C
 
 

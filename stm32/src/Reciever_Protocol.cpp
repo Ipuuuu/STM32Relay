@@ -52,7 +52,7 @@ void ProtocolHandler::processIncomingByte(uint8_t byte) {
 void ProtocolHandler::processIncomingBytes() {
     while(tdev->available()) {
         uint8_t byte = tdev->recvByte();
-        if(byte != 0xFF) processIncomingByte(byte);
+        processIncomingByte(byte);
     }
 }
 
@@ -291,7 +291,7 @@ void ProtocolHandler::handleReadingData2State(uint8_t byte) {
 }
 
 void ProtocolHandler::executeCommand() {
-    uint8_t pin = currentPacket.port.data;
+    uint8_t pin = resolvePin(currentPacket.port.data);
 #ifdef TESTMODE
     Serial.println("\n=== EXECUTING COMMAND ===");
     Serial.print("Command: ");
@@ -356,7 +356,7 @@ void ProtocolHandler::executeCommand() {
             Serial.print("[EXEC] digitalRead -> ");
             Serial.println(value ? "HIGH" : "LOW");
 #endif
-            sendDigitalReadResponse(currentPacket.port.data, value);
+            sendDigitalReadResponse(pin, value);
             break;
         }
         
@@ -379,7 +379,7 @@ void ProtocolHandler::executeCommand() {
             Serial.print("[EXEC] analogRead -> ");
             Serial.println(value);
 #endif
-            sendAnalogReadResponse(currentPacket.port.data, value);
+            sendAnalogReadResponse(pin, value);
             break;
         }
         
