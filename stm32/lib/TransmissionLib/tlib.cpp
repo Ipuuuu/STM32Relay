@@ -1,6 +1,6 @@
 #include "tlib.h"
 
-namespace Receiver{
+namespace commapi{
 
     // ###########################
     /* UART Device Implementation */
@@ -37,7 +37,7 @@ namespace Receiver{
         return 0; // Success
     }
 
-    uint8_t UARTDevice::sendBytes(const uint8_t *bytes, size_t length, uint8_t addr){
+    uint8_t UARTDevice::send(const uint8_t *bytes, uint8_t length, uint8_t addr){
         uart_port->write(bytes, length);
         uart_port->flush();
         return 0; // Success
@@ -45,6 +45,20 @@ namespace Receiver{
 
     uint8_t UARTDevice::recvByte(uint8_t addr){
         return uart_port->read();
+    }
+
+    uint8_t UARTDevice::receive(uint8_t *buf, uint8_t length, uint8_t addr){
+        if(!buf || !length) return 0xFF;
+
+        size_t bytesRead = 0;
+        uint32_t startTime = millis();
+
+        while(bytesRead < length){
+            if(uart_port->available()) 
+                buf[bytesRead++] = uart_port->read();
+            else if((millis() - startTime) >= tout) break;
+        }
+        return bytesRead;
     }
 
     int UARTDevice::available(){
@@ -55,7 +69,7 @@ namespace Receiver{
         tout = timeout;
     }
 
-    void UARTDevice::recover(){
+    void UARTDevice::recoverIfNeeded(){
         // No specific recovery needed for UART, but could implement checks here if desired
     }
 
@@ -89,19 +103,32 @@ namespace Receiver{
         return wire->endTransmission();
     }
 
-    uint8_t I2CMaster::sendBytes(const uint8_t *bytes, size_t length, uint8_t addr){
+    uint8_t I2CMaster::send(const uint8_t *bytes, uint8_t length, uint8_t addr){
         wire->beginTransmission(addr);
+        
+        I2CPacket packet{I2CCMD::WRITE, length};
+
+        wire->write(packet.encode(), 1);
         wire->write(bytes, length);
 
         return wire->endTransmission();
     }
 
-    uint8_t I2CMaster::recvByte(uint8_t saddr){
-        // request 1 byte
-        wire->requestFrom(saddr, static_cast<uint8_t>(1));
+    uint8_t I2CMaster::receive(uint8_t *buf, uint8_t length, uint8_t addr){
+        if(!buf || !length) return 0xFF;
+
+        I2CPacket packet{I2CCMD::READ, length};
+        sendByte(packet.encode(), addr);
+        delay(10);
+
+        wire->requestFrom(addr, static_cast<uint8_t>(length));
         uint8_t requested_bytes = wire->available();
-        if(!requested_bytes) return 0XFF; // error getting bytes
-        return wire->read();
+        if(!requested_bytes) return 0XFF;
+        
+        while(wire->available() && length--){
+            *buf++ = wire->read();
+        }
+        return 0; // Success
     }
 
     // available overriding (add later)
@@ -116,7 +143,7 @@ namespace Receiver{
         #endif
     }
 
-    void I2CMaster::recover(){
+    void I2CMaster::recoverIfNeeded(){
         #ifdef ARDUINO_ARCH_STM32
             // Check if the bus is stuck (SDA or SCL pulled low)
             if(!digitalRead(SDA) || !digitalRead(SCL)){
@@ -142,29 +169,37 @@ namespace Receiver{
         if(!slave) return;
         slave->lastReceiveTime = millis();
         slave->busActive = true;
-        while(slave->wire->available()){
-            uint8_t x = slave->wire->read();
-            if(slave->rxBufferIndex < sizeof(slave->rxBuffer)) slave->rxBuffer[slave->rxBufferIndex++] = x;
+
+        // receive the command byte first and prepare the txBuffer if its a read
+        I2CPacket packet;
+        if(slave->wire->available()) packet.decode(slave->wire->read());
+        if(packet.cmd == static_cast<uint8_t>(I2CCMD::READ)){
+            slave->preparedLen = packet.len;
+        }else if(packet.cmd == static_cast<uint8_t>(I2CCMD::WRITE)){
+            while(slave->wire->available()){
+                uint8_t x = slave->wire->read();
+                if(slave->rxBufferIndex < sizeof(slave->rxBuffer)) slave->rxBuffer[slave->rxBufferIndex++] = x;
+            }
         }
     }
 
     // called on master read from slave, writes bytes from txBuffer
     void I2CSlave::onI2CRequest(){
         if(!slave) return;
-        if(slave->txLen == 0) {
+        if(slave->txBufferIndex == 0 || (slave->preparedLen > slave->txBufferIndex)) {
             slave->wire->write(0xFF); // send dummy byte to prevent clock stretch hang
         } else {
-            for(uint8_t i = 0; i < slave->txLen; i++) slave->wire->write(slave->txBuffer[i]);
+            slave->wire->write(slave->txBuffer, slave->preparedLen);
         }
-        slave->txLen = 0;
+        slave->preparedLen = 0;
         slave->txBufferIndex = 0;
     }
 
 
     I2CSlave::I2CSlave(uint8_t address)
-        : addr(address), txLen(0), 
+        : addr(address), 
           txBufferIndex(0), rxBufferIndex(0), rxNext(0),
-          lastReceiveTime(0), busActive(false) {
+          lastReceiveTime(0), busActive(false), preparedLen(0) {
             #ifdef ARDUINO_ARCH_STM32
                 wire = std::make_unique<TwoWire>();
             #else
@@ -192,13 +227,13 @@ namespace Receiver{
     // this function will stack the bytes to be sent
     // until the master requests those
     uint8_t I2CSlave::sendByte(uint8_t byte, uint8_t){
-        if(txLen < sizeof(txBuffer)) txBuffer[txLen++] = byte;
+        if(txBufferIndex < sizeof(txBuffer)) txBuffer[txBufferIndex++] = byte;
         return 0; // Success
     }
 
-    uint8_t I2CSlave::sendBytes(const uint8_t *bytes, size_t length, uint8_t addr){
+    uint8_t I2CSlave::send(const uint8_t *bytes, size_t length, uint8_t addr){
         for(size_t i = 0; i < length; i++){
-            if(txLen < sizeof(txBuffer)) txBuffer[txLen++] = bytes[i];
+            if(txBufferIndex < sizeof(txBuffer)) txBuffer[txBufferIndex++] = bytes[i];
             else break; // Buffer full, stop adding more bytes
         }
         return 0; // Success
@@ -220,6 +255,19 @@ namespace Receiver{
         return value;
     }
 
+    uint8_t I2CSlave::receive(uint8_t *buf, uint8_t length, uint8_t){
+        if(!buf || !length) return 0xFF;
+
+        noInterrupts();
+        uint8_t bytesRead = 0;
+        while(rxNext < rxBufferIndex && bytesRead < length){
+            buf[bytesRead++] = rxBuffer[rxNext++];
+        }
+        if(rxNext >= rxBufferIndex) rxNext = rxBufferIndex = 0;
+        interrupts();
+        return bytesRead;
+    }
+
     // available overriding (add later)
 
     int I2CSlave::available() {
@@ -231,7 +279,7 @@ namespace Receiver{
 
     void I2CSlave::setTimeout(uint32_t timeout){}
 
-    void I2CSlave::recover(){
+    void I2CSlave::recoverIfNeeded(){
         #ifdef ARDUINO_ARCH_STM32
             if(!busActive) return;
             if((millis() - lastReceiveTime) < I2C_TIMEOUT_MS) return;

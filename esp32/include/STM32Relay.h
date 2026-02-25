@@ -118,12 +118,12 @@ public:
     } pinName;
 
 private:
-    TDEV *tdev; // transmission device pointer
+    commapi::ICOMM *tdev; // communication interface pointer
 
 public:
     // STM32Relay constructor
-    // @param tdev : transmission device pointer
-    explicit STM32Relay(TDEV *tdev);
+    // @param tdev : communication interface pointer
+    explicit STM32Relay(commapi::ICOMM *tdev);
 
     STM32Relay(const STM32Relay&) = delete; // delete copy constructor
     STM32Relay& operator=(const STM32Relay&) = delete; // delete copy assignment
@@ -131,8 +131,8 @@ public:
     STM32Relay(STM32Relay&&);
     STM32Relay& operator=(STM32Relay&&);
 
-    inline TDEV *getTDEV() const{ return tdev; }
-    inline TDEV *getTDEV(){ return tdev; }
+    inline commapi::ICOMM *getIComm() const{ return tdev; }
+    inline commapi::ICOMM *getIComm(){ return tdev; }
 
     // low-level commands
     inline void begin() {tdev->begin();}
@@ -158,20 +158,20 @@ public:
 
 
 // Global relay object needs to be rechecked and reimplemented
-// because we need to pass TDEV pointer to the constructor, and we want to avoid static initialization order issues.
+// because we need to pass commapi::ICOMM pointer to the constructor, and we want to avoid static initialization order issues.
 // One possible solution is to use a singleton pattern or a factory function to create and access the global relay object.
 
 // extern STM32Relay relay; //global relay object
 
 // //global function wrappers
 // inline void begin(){
-//     relay.getTDEV()->begin();
+//     relay.getIComm()->begin();
 // }
 // inline void sendByte(uint8_t byte, uint8_t addr = 0x00){
-//     relay.getTDEV()->sendByte(byte, addr);
+//     relay.getIComm()->sendByte(byte, addr);
 // }
 // inline uint8_t recvByte(uint8_t addr = 0x00){
-//     return relay.getTDEV()->recvByte(addr);
+//     return relay.getIComm()->recvByte(addr);
 // }
 // inline void digitalWrite(uint8_t pin, uint8_t value, uint8_t addr = 0x00){
 //     relay.digitalWrite(pin, value, addr);
@@ -189,7 +189,7 @@ public:
 //     relay.writePPM(pin, microseconds, addr);
 // }
 // inline void setTimeout(uint32_t timeout){
-//     relay.getTDEV()->setTimeout(timeout);
+//     relay.getIComm()->setTimeout(timeout);
 
 // }
 

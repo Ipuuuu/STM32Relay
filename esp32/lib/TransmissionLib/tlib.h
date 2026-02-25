@@ -7,24 +7,54 @@
 
 #include <memory>
 
-namespace Relay{
+namespace commapi{
+
+enum class I2CCMD : uint8_t{
+    WRITE = 0,
+    READ = 1,
+};
+
+struct I2CPacket{
+    uint8_t cmd : 3;
+    uint8_t len : 5;
+
+    explicit I2CPacket() : cmd(0), len(0) {}
+    explicit I2CPacket(I2CCMD cmd, uint8_t len) : cmd(static_cast<uint8_t>(cmd)), len(len) {}
+
+    I2CPacket(const I2CPacket&) = delete;
+    I2CPacket& operator=(const I2CPacket&) = delete;
+    I2CPacket(I2CPacket&&) = delete;
+    I2CPacket& operator=(I2CPacket&&) = delete;
+
+    uint8_t encode() const {
+        return (cmd & 0x07) | ((len & 0x1F) << 3);
+    }
+
+    I2CPacket &decode(uint8_t byte) {
+        cmd = byte & 0x07;
+        len = (byte >> 3) & 0x1F;
+        return *this;
+    }
+};
     
-// Transmission Device Interface Class
-class TDEV{
+// Communication Interface Class
+class ICOMM{
+
+    protected:
+        // to send a single byte
+        virtual uint8_t sendByte(uint8_t byte, uint8_t addr = 0x00) = 0;
     
     public:
         // initialize the transmission device
         virtual void begin() = 0;
 
-        // to send byte
-        virtual uint8_t sendByte(uint8_t byte, uint8_t addr = 0x00) = 0;
-
         // to send bytes
-        virtual uint8_t sendBytes(const uint8_t *bytes, size_t length, uint8_t addr = 0x00);
+        virtual uint8_t send(const uint8_t *bytes, uint8_t length, uint8_t addr = 0x00) = 0;
+        virtual uint8_t send(uint8_t byte, uint8_t addr = 0x00){return send(&byte, 1, addr);}
 
 
         // to receive bytes
-        virtual uint8_t recvByte(uint8_t addr = 0x00) = 0;
+        virtual uint8_t receive(uint8_t *buf, uint8_t length, uint8_t addr = 0x00) = 0;
 
         // set timeout function
         virtual void setTimeout(uint32_t timeout) = 0;
@@ -34,17 +64,20 @@ class TDEV{
 
         virtual void recoverIfNeeded() = 0;
 
-        virtual ~TDEV() = default;
+        virtual ~ICOMM() = default;
 };
 
 // UART Base Class
-class UARTDevice : public TDEV{
+class UARTDevice : public ICOMM{
     private:
         std::unique_ptr<HardwareSerial> uart_port; // serial port
         uint8_t txPin, rxPin; // serial pins
         
         uint32_t tout; // timeout
         uint32_t baud; // baud rate
+
+        // send bytes through the UART device
+        uint8_t sendByte(uint8_t byte, uint8_t addr = 0x00) override;
 
     public:
         explicit UARTDevice(uint32_t baud, uint8_t rxPin, uint8_t txPin);
@@ -59,13 +92,10 @@ class UARTDevice : public TDEV{
         // will wrap the uart_port.begin() function, possibly with error checks
         void begin() override;
 
-        // send bytes through the UART device
-        uint8_t sendByte(uint8_t byte, uint8_t addr = 0x00) override;
-
-        uint8_t sendBytes(const uint8_t *bytes, size_t length, uint8_t addr = 0x00) override;
+        uint8_t send(const uint8_t *bytes, uint8_t length, uint8_t addr = 0x00) override;
 
         // recv bytes through the UART device
-        uint8_t recvByte(uint8_t addr = 0x00) override;
+        uint8_t receive(uint8_t *buf, uint8_t length, uint8_t addr = 0x00) override;
 
         // available overriding
         int available() override;
@@ -78,9 +108,12 @@ class UARTDevice : public TDEV{
 };
 
 // I2C Master Class
-class I2CMaster : public TDEV{
+class I2CMaster : public ICOMM{
     private:
         std::unique_ptr<TwoWire> wire;
+
+        // send bytes through the UART device
+        uint8_t sendByte(uint8_t byte, uint8_t addr = 0x00) override;
 
     public:
         // SDA and SCL pins can be set at the constructor of the TwoWire object, so no need to set them here
@@ -95,15 +128,12 @@ class I2CMaster : public TDEV{
 
         // initialize device
         void begin() override;
-        
-        // Send bytes to the device
-        uint8_t sendByte(uint8_t byte, uint8_t addr = 0x00) override;
 
-        uint8_t sendBytes(const uint8_t *bytes, size_t length, uint8_t addr = 0x00) override;
+        uint8_t send(const uint8_t *bytes, uint8_t length, uint8_t addr = 0x00) override;
     
         // RecvByte
         // @saddr : slave adress, default will be 0x00
-        uint8_t recvByte(uint8_t saddr = 0x00) override;
+        uint8_t receive(uint8_t *buf, uint8_t length, uint8_t addr = 0x00) override;
 
         // available overriding
         int available() override;
@@ -116,14 +146,16 @@ class I2CMaster : public TDEV{
         void recoverIfNeeded();
 };
 
-class I2CSlave : public TDEV{
+class I2CSlave : public ICOMM{
     private:
         std::unique_ptr<TwoWire> wire;
 
         uint8_t rxBuffer[32]; // received buffer
         uint8_t txBuffer[32]; // transmit buffer
         volatile uint8_t rxBufferIndex, rxNext; // rxBufferIndex for receiving, rxNext for byte
-        volatile uint8_t txBufferIndex, txLen;
+        volatile uint8_t txBufferIndex;
+
+        uint8_t preparedLen;
 
         uint8_t addr;
 
@@ -134,6 +166,9 @@ class I2CSlave : public TDEV{
         static I2CSlave *slave; // pointer to slave for static ISR calls
         static void onI2CReceive(int count); // static ISR for receiving data from master
         static void onI2CRequest(); // static ISR for sending data to master
+
+        // send bytes through the UART device
+        uint8_t sendByte(uint8_t byte, uint8_t addr = 0x00) override;
     public:
 
         // SDA and SCL pins can be set at the constructor of the TwoWire object, so no need to set them here
@@ -148,11 +183,9 @@ class I2CSlave : public TDEV{
 
         void begin() override;
         
-        uint8_t sendByte(uint8_t byte, uint8_t) override;
-        
-        uint8_t sendBytes(const uint8_t *bytes, size_t length, uint8_t addr = 0x00) override;
+        uint8_t send(const uint8_t *bytes, uint8_t length, uint8_t addr = 0x00) override;
 
-        uint8_t recvByte(uint8_t) override;
+        uint8_t receive(uint8_t *buf, uint8_t length, uint8_t addr = 0x00) override;
 
         // available overriding
         int available() override;
@@ -163,7 +196,7 @@ class I2CSlave : public TDEV{
 };
 
 // Global objects
-// i am unsure about adding these or not
+// i am not sure about adding these or not
 // because it involves assuming the use of certain transmission devices, and it may cause static initialization order issues.
 
 //extern UARTDevice uartDev{115200, D8, D9}; // UARTDevice object for Serial1 communication

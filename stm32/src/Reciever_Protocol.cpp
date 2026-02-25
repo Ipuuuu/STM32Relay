@@ -3,7 +3,7 @@
 
 namespace Receiver {
 
-ProtocolHandler::ProtocolHandler(TDEV* tdev) 
+ProtocolHandler::ProtocolHandler(commapi::ICOMM* tdev) 
     : tdev(tdev), currentState(IDLE), expectedDataBytes(0), 
       receivedDataBytes(0), servoCount(0) {
     

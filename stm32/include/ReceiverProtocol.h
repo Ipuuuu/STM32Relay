@@ -79,7 +79,7 @@ public:
 };
 
 private:
-    TDEV* tdev; // transmission device
+    commapi::ICOMM* tdev; // communication interface
     State currentState;
     Relay::Packet currentPacket;
     int expectedDataBytes;
@@ -92,7 +92,7 @@ private:
     } servoMap[10];
 
 public:
-    ProtocolHandler(TDEV* tdev);
+    ProtocolHandler(commapi::ICOMM* tdev);
     
     void begin(){tdev->begin();}
     void recover() {tdev->recover();}

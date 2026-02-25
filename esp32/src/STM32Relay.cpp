@@ -92,7 +92,7 @@ void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uin
     packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
 }
 
-STM32Relay::STM32Relay(TDEV *tdev)
+STM32Relay::STM32Relay(commapi::ICOMM *tdev)
     : tdev(tdev){}
 
 
