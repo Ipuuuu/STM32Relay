@@ -29,9 +29,16 @@ void setup() {
     
     // start the transmission device and protocol handler
     handler.begin();
+
+    // NEW: Set initial config version (0 means unconfigured)
+    handler.setConfigVersion(0);
+    // Reset flag is automatically set in constructor
 }
 
 void loop(){
     handler.recover(); // For I2C slave, recover if stuck
     handler.processIncomingBytes();
+
+    // Optional: Could clear reset flag after some time if no heartbeat received
+    // But better to let master clear it after reconfiguration
 }

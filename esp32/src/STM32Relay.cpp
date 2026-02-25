@@ -1,423 +1,602 @@
 #include "STM32Relay.h"
 
+namespace Relay
+{
+    // Helper: Convert Relay::Packet to raw bytes for transmission
+    void packetToBytes(const Packet &packet, uint8_t *bytes, int numDataBytes)
+    {
+        bytes[0] = *reinterpret_cast<const uint8_t *>(&packet.commandByte);
+        bytes[1] = *reinterpret_cast<const uint8_t *>(&packet.port);
 
-namespace Relay{
-// Helper: Convert Relay::Packet to raw bytes for transmission
-void packetToBytes(const Packet& packet, uint8_t* bytes, int numDataBytes) {
-    bytes[0] = *reinterpret_cast<const uint8_t*>(&packet.commandByte);
-    bytes[1] = *reinterpret_cast<const uint8_t*>(&packet.port);
-    
-    if(numDataBytes >= 1) {
-        bytes[2] = *reinterpret_cast<const uint8_t*>(&packet.data[0]);
-    }
-    if(numDataBytes >= 2) {
-        bytes[3] = *reinterpret_cast<const uint8_t*>(&packet.data[1]);
-    }
-}
-
-// Helper: Convert raw bytes to Relay::Packet
-void bytesToPacket(const uint8_t* bytes, Packet& packet, int numDataBytes) {
-    packet.commandByte = *reinterpret_cast<const CommandByte*>(&bytes[0]);
-    packet.port = *reinterpret_cast<const DataByte*>(&bytes[1]);
-    
-    if(numDataBytes >= 1) {
-        packet.data[0] = *reinterpret_cast<const DataByte*>(&bytes[2]);
-    }
-    if(numDataBytes >= 2) {
-        packet.data[1] = *reinterpret_cast<const DataByte*>(&bytes[3]);
-    }
-}
-
-// Build a 2-byte packet (command + port)
-void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin) {
-    // Build command byte
-    packet.commandByte.command = cmd;
-    packet.commandByte.parity = parity3(static_cast<uint8_t>(cmd));
-    packet.commandByte.sync = 1;
-    
-    // Build port byte
-    packet.port.data = pin & 0b00111111;
-    packet.port.parity = parity6(packet.port.data);
-    packet.port.sync = 0;
-    
-    // Calculate ECC for command-port pair
-    packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
-}
-
-// Build a 4-byte packet (command + port + 2 data bytes)
-void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uint16_t value) {
-    // Build command byte
-    packet.commandByte.command = cmd;
-    packet.commandByte.parity = parity3(static_cast<uint8_t>(cmd));
-    packet.commandByte.sync = 1;
-    
-    // Build port byte
-    packet.port.data = pin & 0b00111111;
-    packet.port.parity = parity6(packet.port.data);
-    packet.port.sync = 0;
-    
-    // Build data[0] - upper 6 bits
-    packet.data[0].data = (value >> 6) & 0b00111111;
-    packet.data[0].parity = parity6(packet.data[0].data);
-    packet.data[0].sync = 0;
-    
-    // Build data[1] - lower 6 bits
-    packet.data[1].data = value & 0b00111111;
-    packet.data[1].parity = parity6(packet.data[1].data);
-    packet.data[1].sync = 0;
-    
-    // Calculate ECC for command-port pair
-    packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
-}
-
-// Build a 3-byte packet (command + port + 1 data byte)
-// Build a 3-byte packet (command + port + 1 data byte)
-void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uint8_t singleByteValue) {
-    // Build command byte
-    packet.commandByte.command = cmd;
-    packet.commandByte.parity = parity3(static_cast<uint8_t>(cmd));
-    packet.commandByte.sync = 1;
-    
-    // Build port byte
-    packet.port.data = pin & 0b00111111;
-    packet.port.parity = parity6(packet.port.data);
-    packet.port.sync = 0;
-    
-    // Build data[0] - single byte value 
-    packet.data[0].data = singleByteValue & 0b00111111;
-    packet.data[0].parity = parity6(packet.data[0].data);
-    packet.data[0].sync = 0;
-    
-    // Calculate ECC for command-port pair
-    packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
-}
-
-STM32Relay::STM32Relay(commapi::ICOMM *tdev)
-    : tdev(tdev){}
-
-
-
-void STM32Relay::sendByte(uint8_t byte, uint8_t addr) {
-    uint8_t errorCode = tdev->sendByte(byte, addr);
-    if(errorCode != 0) {
-#ifdef TESTMODE
-        Serial.println("Error sending byte: " + String(byte, HEX));
-        Serial.println("Address: " + String(addr, HEX));
-        Serial.println("Error code: " + String(errorCode));
-#endif
-    }
-}
-
-void STM32Relay::sendBytes(const uint8_t *bytes, size_t length, uint8_t addr) {
-    uint8_t errorCode = tdev->sendBytes(bytes, length, addr);
-    if(errorCode != 0) {
-#ifdef TESTMODE
-        Serial.println("Error sending bytes:");
-        for(size_t i = 0; i < length; i++) {
-            Serial.print("Byte " + String(i) + ": 0x" + String(bytes[i], HEX) + " ");
+        if (numDataBytes >= 1)
+        {
+            bytes[2] = *reinterpret_cast<const uint8_t *>(&packet.data[0]);
         }
-        Serial.println("\nAddress: " + String(addr, HEX));
-        Serial.println("Error code: " + String(errorCode));
-#endif
+        if (numDataBytes >= 2)
+        {
+            bytes[3] = *reinterpret_cast<const uint8_t *>(&packet.data[1]);
+        }
     }
-}
 
+    // Helper: Convert raw bytes to Relay::Packet
+    void bytesToPacket(const uint8_t *bytes, Packet &packet, int numDataBytes)
+    {
+        packet.commandByte = *reinterpret_cast<const CommandByte *>(&bytes[0]);
+        packet.port = *reinterpret_cast<const DataByte *>(&bytes[1]);
 
-STM32Relay& STM32Relay::sendPacket(const Packet& packet, uint8_t addr) {
-    int numDataBytes = packet.commandByte.requiresData();
-    uint8_t bytes[4];
-    
-    packetToBytes(packet, bytes, numDataBytes);
-    
-    // Send all bytes
-    uint8_t errorCode = tdev->sendBytes(bytes, 2 + numDataBytes, addr);
-    return (*this);
-}
+        if (numDataBytes >= 1)
+        {
+            packet.data[0] = *reinterpret_cast<const DataByte *>(&bytes[2]);
+        }
+        if (numDataBytes >= 2)
+        {
+            packet.data[1] = *reinterpret_cast<const DataByte *>(&bytes[3]);
+        }
+    }
 
-bool STM32Relay::recvPacket(Packet& packet, int expectedBytes, uint8_t addr) {
-    uint8_t bytes[4] = {0};
-    
-    // Receive bytes
-    for(int i = 0; i < expectedBytes; i++) {
-        bytes[i] = tdev->recvByte(addr);
-        if(bytes[i] == 0xFF) {  // Timeout
+    // Build a 2-byte packet (command + port)
+    void buildPacket(Packet &packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin)
+    {
+        // Build command byte
+        packet.commandByte.command = cmd;
+        packet.commandByte.parity = parity3(static_cast<uint8_t>(cmd));
+        packet.commandByte.sync = 1;
+
+        // Build port byte
+        packet.port.data = pin & 0b00111111;
+        packet.port.parity = parity6(packet.port.data);
+        packet.port.sync = 0;
+
+        // Calculate ECC for command-port pair
+        packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
+    }
+
+    // Build a 4-byte packet (command + port + 2 data bytes)
+    void buildPacket(Packet &packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uint16_t value)
+    {
+        // Build command byte
+        packet.commandByte.command = cmd;
+        packet.commandByte.parity = parity3(static_cast<uint8_t>(cmd));
+        packet.commandByte.sync = 1;
+
+        // Build port byte
+        packet.port.data = pin & 0b00111111;
+        packet.port.parity = parity6(packet.port.data);
+        packet.port.sync = 0;
+
+        // Build data[0] - upper 6 bits
+        packet.data[0].data = (value >> 6) & 0b00111111;
+        packet.data[0].parity = parity6(packet.data[0].data);
+        packet.data[0].sync = 0;
+
+        // Build data[1] - lower 6 bits
+        packet.data[1].data = value & 0b00111111;
+        packet.data[1].parity = parity6(packet.data[1].data);
+        packet.data[1].sync = 0;
+
+        // Calculate ECC for command-port pair
+        packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
+    }
+
+    // Build a 3-byte packet (command + port + 1 data byte)
+    // Build a 3-byte packet (command + port + 1 data byte)
+    void buildPacket(Packet &packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uint8_t singleByteValue)
+    {
+        // Build command byte
+        packet.commandByte.command = cmd;
+        packet.commandByte.parity = parity3(static_cast<uint8_t>(cmd));
+        packet.commandByte.sync = 1;
+
+        // Build port byte
+        packet.port.data = pin & 0b00111111;
+        packet.port.parity = parity6(packet.port.data);
+        packet.port.sync = 0;
+
+        // Build data[0] - single byte value
+        packet.data[0].data = singleByteValue & 0b00111111;
+        packet.data[0].parity = parity6(packet.data[0].data);
+        packet.data[0].sync = 0;
+
+        // Calculate ECC for command-port pair
+        packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
+    }
+
+    STM32Relay::STM32Relay(TDEV *tdev) : tdev(tdev)
+    {
+        // Initialize slave states
+        for (int i = 0; i < MAX_SLAVES; i++)
+        {
+            slaveStates[i].configVersion = 0;
+            slaveStates[i].flags = 0;
+            slaveStates[i].lastHeartbeat = 0;
+            slaveStates[i].connected = false;
+            expectedConfigVersion[i] = 0;
+        }
+    }
+
+    int STM32Relay::getSlaveIndex(uint8_t addr)
+    {
+        // Simple linear search (can be optimized)
+        for (int i = 0; i < MAX_SLAVES; i++)
+        {
+            if (slaveStates[i].lastHeartbeat == addr) // Need better mapping
+                return i;
+        }
+        // Find first empty slot
+        for (int i = 0; i < MAX_SLAVES; i++)
+        {
+            if (!slaveStates[i].connected)
+                return i;
+        }
+        return -1; // No space
+    }
+
+    bool STM32Relay::heartbeat(uint8_t addr, uint32_t timeout_ms)
+    {
+#ifdef TESTMODE
+        Serial.println("\n=== HEARTBEAT Debug ===");
+        Serial.print("Address: 0x");
+        Serial.println(addr, HEX);
+#endif
+
+        // Build heartbeat packet
+        Packet heartbeatPacket;
+        heartbeatPacket.commandByte.command = CommandByte::CMD_EXTENDED;
+        heartbeatPacket.commandByte.parity = parity3(CommandByte::CMD_EXTENDED);
+        heartbeatPacket.commandByte.sync = 1;
+
+        // Use port byte for subcommand
+        heartbeatPacket.port.data = CommandByte::CMD_HEARTBEAT;
+        heartbeatPacket.port.parity = parity6(heartbeatPacket.port.data);
+        heartbeatPacket.port.sync = 0;
+
+        // Calculate ECC
+        heartbeatPacket.commandByte.ecc = calculateECC(
+            heartbeatPacket.commandByte,
+            heartbeatPacket.port);
+
+        // Send heartbeat
+        sendPacket(heartbeatPacket, addr);
+
+        // Wait for response (expecting 4-byte response with state)
+        uint32_t start = millis();
+        while ((millis() - start) < timeout_ms)
+        {
+            if (tdev->available())
+            {
+                Packet responsePacket;
+                if (recvPacket(responsePacket, 4, addr))
+                {
+                    // Verify it's a state report
+                    if (responsePacket.commandByte.command == CommandByte::CMD_EXTENDED &&
+                        responsePacket.port.data == CommandByte::CMD_STATE_REPORT)
+                    {
+
+                        int idx = getSlaveIndex(addr);
+                        if (idx >= 0)
+                        {
+                            // Extract state from data bytes
+                            slaveStates[idx].configVersion = responsePacket.data[0].data;
+                            slaveStates[idx].flags = responsePacket.data[1].data;
+                            slaveStates[idx].lastHeartbeat = millis();
+                            slaveStates[idx].connected = true;
+
+#ifdef TESTMODE
+                            Serial.print("Slave version: ");
+                            Serial.println(slaveStates[idx].configVersion);
+                            Serial.print("Slave flags: 0x");
+                            Serial.println(slaveStates[idx].flags, HEX);
+#endif
+
+                            // Check if reconfiguration needed
+                            if (slaveStates[idx].configVersion != expectedConfigVersion[idx] ||
+                                (slaveStates[idx].flags & STATE_FLAG_RESET))
+                            {
+                                return false; // Signal that reconfig needed
+                            }
+                            return true; // Healthy slave
+                        }
+                    }
+                }
+            }
+            delay(1);
+        }
+
+        // Timeout - slave not responding
+        int idx = getSlaveIndex(addr);
+        if (idx >= 0)
+        {
+            slaveStates[idx].connected = false;
+        }
+        return false;
+    }
+
+    void STM32Relay::setExpectedConfigVersion(uint8_t addr, uint8_t version)
+    {
+        int idx = getSlaveIndex(addr);
+        if (idx >= 0)
+        {
+            expectedConfigVersion[idx] = version;
+        }
+    }
+
+    void STM32Relay::sendByte(uint8_t byte, uint8_t addr)
+    {
+        uint8_t errorCode = tdev->sendByte(byte, addr);
+        if (errorCode != 0)
+        {
+#ifdef TESTMODE
+            Serial.println("Error sending byte: " + String(byte, HEX));
+            Serial.println("Address: " + String(addr, HEX));
+            Serial.println("Error code: " + String(errorCode));
+#endif
+        }
+    }
+
+    void STM32Relay::sendBytes(const uint8_t *bytes, size_t length, uint8_t addr)
+    {
+        uint8_t errorCode = tdev->sendBytes(bytes, length, addr);
+        if (errorCode != 0)
+        {
+#ifdef TESTMODE
+            Serial.println("Error sending bytes:");
+            for (size_t i = 0; i < length; i++)
+            {
+                Serial.print("Byte " + String(i) + ": 0x" + String(bytes[i], HEX) + " ");
+            }
+            Serial.println("\nAddress: " + String(addr, HEX));
+            Serial.println("Error code: " + String(errorCode));
+#endif
+        }
+    }
+
+    STM32Relay &STM32Relay::sendPacket(const Packet &packet, uint8_t addr)
+    {
+        int numDataBytes = packet.commandByte.requiresData();
+        uint8_t bytes[4];
+
+        packetToBytes(packet, bytes, numDataBytes);
+
+        // Send all bytes
+        uint8_t errorCode = tdev->sendBytes(bytes, 2 + numDataBytes, addr);
+        return (*this);
+    }
+
+    bool STM32Relay::recvPacket(Packet &packet, int expectedBytes, uint8_t addr)
+    {
+        uint8_t bytes[4] = {0};
+
+        // Receive bytes
+        for (int i = 0; i < expectedBytes; i++)
+        {
+            bytes[i] = tdev->recvByte(addr);
+            if (bytes[i] == 0xFF)
+            { // Timeout
+                return false;
+            }
+        }
+
+        // Convert to packet structure
+        int numDataBytes = expectedBytes - 2; // Subtract command and port bytes
+        bytesToPacket(bytes, packet, numDataBytes);
+
+        // Verify sync bit on command byte
+        if (packet.commandByte.sync != 1)
+        {
             return false;
         }
-    }
-        
-    // Convert to packet structure
-    int numDataBytes = expectedBytes - 2;  // Subtract command and port bytes
-    bytesToPacket(bytes, packet, numDataBytes);
-    
-    // Verify sync bit on command byte
-    if(packet.commandByte.sync != 1) {
-        return false;
-    }
-    
-    // Perform error correction
-    auto [errorByte, errorBit] = packet.locateAndCorrectError();
-    
-    // If error was detected and corrected, you might want to log it
-    // (errorByte != 0) means an error was found and corrected
-    
-    return true;
-}
 
-STM32Relay&  STM32Relay::pinMode(uint8_t pin, uint8_t mode, uint8_t addr){
-    //debug
-#ifdef TESTMODE
-    Serial.println("\n=== pinMode Debug ===");
-    Serial.print("Pin: "); Serial.println(pin);
-    Serial.print("Mode: "); 
-    Serial.println((mode == INPUT) ? "INPUT" : 
-                    (mode == OUTPUT) ? "OUTPUT" : 
-                    (mode == INPUT_PULLUP) ? "INPUT_PULLUP" :
-                     "INPUT_PULLDOWN");
-#endif
-    // CommandByte::COMMAND_TYPE cmd;
-    // if(mode == 0x03) {
-    //     cmd = CommandByte::CMD_SET_PIN_MODE;
-    // } else if(mode == 0x01) {
-    //     cmd = CommandByte::CMD_SET_PIN_MODE;
-    // }
-    // else if(mode == 0x05) {
-    //     cmd = CommandByte::CMD_SET_PIN_MODE;
-    // }
-    
-    // to resolve mode config confliction on STM32 side
-    mode = (mode == INPUT) ? 0x00 : 
-           (mode == OUTPUT) ? 0x01 : 
-           (mode == INPUT_PULLUP) ? 0x03 :
-           (mode == INPUT_PULLDOWN) ? 0x09 : 0x00;
-    // Build packet (3 bytes)
-    Packet packet;
-    buildPacket(packet, CommandByte::CMD_SET_PIN_MODE, pin, mode);
+        // Perform error correction
+        auto [errorByte, errorBit] = packet.locateAndCorrectError();
 
-    //debug
-#ifdef TESTMODE
-    Serial.print("Command: 0b"); Serial.println(static_cast<uint8_t>(packet.commandByte.command), BIN);
-    Serial.print("ECC: 0b"); Serial.println(packet.commandByte.ecc, BIN);
-    Serial.print("Parity: "); Serial.println(packet.commandByte.parity);
-    Serial.print("Port Data: 0x"); Serial.println(packet.port.data, HEX);
-    Serial.print("Mode Data: 0x"); Serial.println(packet.data[0].data, HEX);
-#endif
+        // If error was detected and corrected, you might want to log it
+        // (errorByte != 0) means an error was found and corrected
 
-    sendPacket(packet, addr);
-    //debug
-#ifdef TESTMODE
-    Serial.println("Packet sent");
-#endif
-    
-    return (*this);
-}
-
-
-
-STM32Relay&  STM32Relay::digitalWrite(uint8_t pin, uint8_t value, uint8_t addr){
-    //debug
-#ifdef TESTMODE
-    Serial.println("\n=== digitalWrite Debug ===");
-    Serial.print("Pin: "); Serial.println(pin);
-    Serial.print("Value: "); Serial.println(value ? "HIGH" : "LOW");
-#endif
-
-    CommandByte::COMMAND_TYPE cmd;
-    if(value == 1) {
-        cmd = CommandByte::CMD_D_W_HIGH;
-    } else {
-        cmd = CommandByte::CMD_D_W_LOW;
-    }
-    
-    Packet packet;
-    buildPacket(packet, cmd, pin);
-
-    //debug
-#ifdef TESTMODE
-    Serial.print("Command: 0b"); Serial.println(static_cast<uint8_t>(packet.commandByte.command), BIN);
-    Serial.print("ECC: 0b"); Serial.println(packet.commandByte.ecc, BIN);
-    Serial.print("Parity: "); Serial.println(packet.commandByte.parity);
-    Serial.print("Port Data: 0x"); Serial.println(packet.port.data, HEX);
-#endif
-
-    sendPacket(packet, addr);
-    //debug
-#ifdef TESTMODE
-    Serial.println("Packet sent");
-#endif
-
-    return (*this);
-}
-
-bool STM32Relay::digitalRead(uint8_t pin, uint8_t addr) {
-#ifdef TESTMODE
-    Serial.println("\n=== digitalRead Debug ===");
-    Serial.print("Pin: "); 
-    Serial.println(pin);
-#endif
-
-    Packet requestPacket;
-    buildPacket(requestPacket, CommandByte::CMD_D_R, pin);
-
-    //debug
-#ifdef TESTMODE
-    Serial.println("\nRequest Packet Debug:");
-    Serial.print("Request Command: 0b"); Serial.println(static_cast<uint8_t>(requestPacket.commandByte.command), BIN);
-    Serial.print("Request ECC: 0b"); Serial.println(requestPacket.commandByte.ecc, BIN);
-#endif
-    
-    sendPacket(requestPacket, addr);
-    //debug
-#ifdef TESTMODE
-    Serial.println("Request sent, waiting for reply...");
-#endif
-    
-    // Receive response (2 bytes: command + data)
-    Packet replyPacket;
-    if(!recvPacket(replyPacket, 2, addr)) {
-        return false;
+        return true;
     }
 
-    //debug
+    STM32Relay &STM32Relay::pinMode(uint8_t pin, uint8_t mode, uint8_t addr)
+    {
+        // debug
 #ifdef TESTMODE
-    Serial.println("Reply received");
-    Serial.print("Reply Command: 0b"); Serial.println(static_cast<uint8_t>(replyPacket.commandByte.command), BIN);
-    Serial.print("Reply ECC: 0b"); Serial.println(replyPacket.commandByte.ecc, BIN);
-    Serial.print("Reply Parity: "); Serial.println(replyPacket.commandByte.parity);
+        Serial.println("\n=== pinMode Debug ===");
+        Serial.print("Pin: ");
+        Serial.println(pin);
+        Serial.print("Mode: ");
+        Serial.println((mode == INPUT) ? "INPUT" : (mode == OUTPUT)     ? "OUTPUT"
+                                               : (mode == INPUT_PULLUP) ? "INPUT_PULLUP"
+                                                                        : "INPUT_PULLDOWN");
 #endif
-    
-    // Extract reply code from command byte
-    uint8_t replyCode = static_cast<uint8_t>(replyPacket.commandByte.command);
-    
-    //debug
-    bool result = (replyCode == REPLY_D_HIGH);
+        // CommandByte::COMMAND_TYPE cmd;
+        // if(mode == 0x03) {
+        //     cmd = CommandByte::CMD_SET_PIN_MODE;
+        // } else if(mode == 0x01) {
+        //     cmd = CommandByte::CMD_SET_PIN_MODE;
+        // }
+        // else if(mode == 0x05) {
+        //     cmd = CommandByte::CMD_SET_PIN_MODE;
+        // }
+
+        // to resolve mode config confliction on STM32 side
+        mode = (mode == INPUT) ? 0x00 : (mode == OUTPUT)       ? 0x01
+                                    : (mode == INPUT_PULLUP)   ? 0x03
+                                    : (mode == INPUT_PULLDOWN) ? 0x09
+                                                               : 0x00;
+        // Build packet (3 bytes)
+        Packet packet;
+        buildPacket(packet, CommandByte::CMD_SET_PIN_MODE, pin, mode);
+
+        // debug
 #ifdef TESTMODE
-    Serial.print("Result: "); 
-    Serial.println(result ? "HIGH" : "LOW");
-#endif
-
-    return (replyCode == REPLY_D_HIGH);
-}
-
-STM32Relay&  STM32Relay::analogWrite(uint8_t pin, uint8_t value, uint8_t addr){
-    //debug
-#ifdef TESTMODE
-    Serial.println("\n=== analogWrite Debug ===");
-    Serial.print("Pin: "); Serial.println(pin);
-    Serial.print("Value (8-bit): "); Serial.println(value);
-#endif
-
-    // Convert 8-bit to 12-bit
-    uint16_t value12bits = (uint16_t)value << 4;
-
-    //debug
-    Serial.print("Value (12-bit): "); Serial.println(value12bits);
-
-    Packet packet;
-    buildPacket(packet, CommandByte::CMD_A_W, pin, value12bits);
-
-    //debug
-#ifdef TESTMODE
-    Serial.print("Command: 0b"); Serial.println(static_cast<uint8_t>(packet.commandByte.command), BIN);
-    Serial.print("ECC: 0b"); Serial.println(packet.commandByte.ecc, BIN);
-    Serial.print("Port Data: 0x"); Serial.println(packet.port.data, HEX);
-    Serial.print("Data[0]: 0b"); Serial.println(packet.data[0].data, BIN);
-    Serial.print("Data[1]: 0b"); Serial.println(packet.data[1].data, BIN);
-    Serial.print("Data[0] Parity: "); Serial.println(packet.data[0].parity);
-    Serial.print("Data[1] Parity: "); Serial.println(packet.data[1].parity);
+        Serial.print("Command: 0b");
+        Serial.println(static_cast<uint8_t>(packet.commandByte.command), BIN);
+        Serial.print("ECC: 0b");
+        Serial.println(packet.commandByte.ecc, BIN);
+        Serial.print("Parity: ");
+        Serial.println(packet.commandByte.parity);
+        Serial.print("Port Data: 0x");
+        Serial.println(packet.port.data, HEX);
+        Serial.print("Mode Data: 0x");
+        Serial.println(packet.data[0].data, HEX);
 #endif
 
-    sendPacket(packet, addr);
-
-    //debug
+        sendPacket(packet, addr);
+        // debug
 #ifdef TESTMODE
-    Serial.println("Packet sent");
+        Serial.println("Packet sent");
 #endif
 
-
-    return (*this);
-}
-
-int STM32Relay::analogRead(uint8_t pin, uint8_t addr){
-    //debug
-#ifdef TESTMODE
-    Serial.println("\n=== analogRead Debug ===");
-    Serial.print("Pin: "); Serial.println(pin);
-#endif
-
-    Packet requestPacket;
-    buildPacket(requestPacket, CommandByte::CMD_A_R, pin);
-
-    //debug
-#ifdef TESTMODE
-    Serial.print("Request Command: 0b"); Serial.println(static_cast<uint8_t>(requestPacket.commandByte.command), BIN);
-    Serial.print("Request ECC: 0b"); Serial.println(requestPacket.commandByte.ecc, BIN);
-#endif
-
-    sendPacket(requestPacket, addr);
-
-    //debug
-#ifdef TESTMODE
-    Serial.println("Request sent, waiting for reply...");
-#endif
-    
-    // Receive response (4 bytes: command + port + 2 data bytes)
-    Packet replyPacket;
-    if(!recvPacket(replyPacket, 4, addr)) {
-        return -1;
+        return (*this);
     }
 
-    //debug
+    STM32Relay &STM32Relay::digitalWrite(uint8_t pin, uint8_t value, uint8_t addr)
+    {
+        // debug
 #ifdef TESTMODE
-    Serial.println("Reply received");
-    Serial.print("Reply Command: 0b"); Serial.println(static_cast<uint8_t>(replyPacket.commandByte.command), BIN);
-    Serial.print("Reply ECC: 0b"); Serial.println(replyPacket.commandByte.ecc, BIN);
-    Serial.print("Reply Data[0]: 0b"); Serial.println(replyPacket.data[0].data, BIN);
-    Serial.print("Reply Data[1]: 0b"); Serial.println(replyPacket.data[1].data, BIN);
-#endif
-    
-    // Reconstruct 12-bit value from data bytes
-    uint16_t value = ((replyPacket.data[0].data & 0b00111111) << 6) | 
-                     (replyPacket.data[1].data & 0b00111111);
-    
-    //debug
-#ifdef TESTMODE
-    Serial.print("Reconstructed Value: "); Serial.println(value);
-#endif
-    
-    return value;
-}
-
-STM32Relay&  STM32Relay::writePPM(uint8_t pin, uint32_t microseconds, uint8_t addr){
-    //debug
-#ifdef TESTMODE
-    Serial.println("\n=== writePPM Debug ===");
-    Serial.print("Pin: "); Serial.println(pin);
-    Serial.print("Microseconds: "); Serial.println(microseconds);
+        Serial.println("\n=== digitalWrite Debug ===");
+        Serial.print("Pin: ");
+        Serial.println(pin);
+        Serial.print("Value: ");
+        Serial.println(value ? "HIGH" : "LOW");
 #endif
 
-    // Build packet (4 bytes)
-    Packet packet;
-    buildPacket(packet, CommandByte::CMD_SET_PPM, pin, (uint16_t)microseconds);
-    
-    //debug
+        CommandByte::COMMAND_TYPE cmd;
+        if (value == 1)
+        {
+            cmd = CommandByte::CMD_D_W_HIGH;
+        }
+        else
+        {
+            cmd = CommandByte::CMD_D_W_LOW;
+        }
+
+        Packet packet;
+        buildPacket(packet, cmd, pin);
+
+        // debug
 #ifdef TESTMODE
-    Serial.print("Command: 0b"); Serial.println(static_cast<uint8_t>(packet.commandByte.command), BIN);
-    Serial.print("ECC: 0b"); Serial.println(packet.commandByte.ecc, BIN);
-    Serial.print("Port Data: 0x"); Serial.println(packet.port.data, HEX);
-    Serial.print("Data[0]: 0b"); Serial.println(packet.data[0].data, BIN);
-    Serial.print("Data[1]: 0b"); Serial.println(packet.data[1].data, BIN);
+        Serial.print("Command: 0b");
+        Serial.println(static_cast<uint8_t>(packet.commandByte.command), BIN);
+        Serial.print("ECC: 0b");
+        Serial.println(packet.commandByte.ecc, BIN);
+        Serial.print("Parity: ");
+        Serial.println(packet.commandByte.parity);
+        Serial.print("Port Data: 0x");
+        Serial.println(packet.port.data, HEX);
 #endif
 
-    sendPacket(packet, addr);
-
-    //debug
+        sendPacket(packet, addr);
+        // debug
 #ifdef TESTMODE
-    Serial.println("Packet sent");
+        Serial.println("Packet sent");
 #endif
 
-    return (*this);
-}
+        return (*this);
+    }
 
+    bool STM32Relay::digitalRead(uint8_t pin, uint8_t addr)
+    {
+#ifdef TESTMODE
+        Serial.println("\n=== digitalRead Debug ===");
+        Serial.print("Pin: ");
+        Serial.println(pin);
+#endif
 
+        Packet requestPacket;
+        buildPacket(requestPacket, CommandByte::CMD_D_R, pin);
+
+        // debug
+#ifdef TESTMODE
+        Serial.println("\nRequest Packet Debug:");
+        Serial.print("Request Command: 0b");
+        Serial.println(static_cast<uint8_t>(requestPacket.commandByte.command), BIN);
+        Serial.print("Request ECC: 0b");
+        Serial.println(requestPacket.commandByte.ecc, BIN);
+#endif
+
+        sendPacket(requestPacket, addr);
+        // debug
+#ifdef TESTMODE
+        Serial.println("Request sent, waiting for reply...");
+#endif
+
+        // Receive response (2 bytes: command + data)
+        Packet replyPacket;
+        if (!recvPacket(replyPacket, 2, addr))
+        {
+            return false;
+        }
+
+        // debug
+#ifdef TESTMODE
+        Serial.println("Reply received");
+        Serial.print("Reply Command: 0b");
+        Serial.println(static_cast<uint8_t>(replyPacket.commandByte.command), BIN);
+        Serial.print("Reply ECC: 0b");
+        Serial.println(replyPacket.commandByte.ecc, BIN);
+        Serial.print("Reply Parity: ");
+        Serial.println(replyPacket.commandByte.parity);
+#endif
+
+        // Extract reply code from command byte
+        uint8_t replyCode = static_cast<uint8_t>(replyPacket.commandByte.command);
+
+        // debug
+        bool result = (replyCode == REPLY_D_HIGH);
+#ifdef TESTMODE
+        Serial.print("Result: ");
+        Serial.println(result ? "HIGH" : "LOW");
+#endif
+
+        return (replyCode == REPLY_D_HIGH);
+    }
+
+    STM32Relay &STM32Relay::analogWrite(uint8_t pin, uint8_t value, uint8_t addr)
+    {
+        // debug
+#ifdef TESTMODE
+        Serial.println("\n=== analogWrite Debug ===");
+        Serial.print("Pin: ");
+        Serial.println(pin);
+        Serial.print("Value (8-bit): ");
+        Serial.println(value);
+#endif
+
+        // Convert 8-bit to 12-bit
+        uint16_t value12bits = (uint16_t)value << 4;
+
+        // debug
+        Serial.print("Value (12-bit): ");
+        Serial.println(value12bits);
+
+        Packet packet;
+        buildPacket(packet, CommandByte::CMD_A_W, pin, value12bits);
+
+        // debug
+#ifdef TESTMODE
+        Serial.print("Command: 0b");
+        Serial.println(static_cast<uint8_t>(packet.commandByte.command), BIN);
+        Serial.print("ECC: 0b");
+        Serial.println(packet.commandByte.ecc, BIN);
+        Serial.print("Port Data: 0x");
+        Serial.println(packet.port.data, HEX);
+        Serial.print("Data[0]: 0b");
+        Serial.println(packet.data[0].data, BIN);
+        Serial.print("Data[1]: 0b");
+        Serial.println(packet.data[1].data, BIN);
+        Serial.print("Data[0] Parity: ");
+        Serial.println(packet.data[0].parity);
+        Serial.print("Data[1] Parity: ");
+        Serial.println(packet.data[1].parity);
+#endif
+
+        sendPacket(packet, addr);
+
+        // debug
+#ifdef TESTMODE
+        Serial.println("Packet sent");
+#endif
+
+        return (*this);
+    }
+
+    int STM32Relay::analogRead(uint8_t pin, uint8_t addr)
+    {
+        // debug
+#ifdef TESTMODE
+        Serial.println("\n=== analogRead Debug ===");
+        Serial.print("Pin: ");
+        Serial.println(pin);
+#endif
+
+        Packet requestPacket;
+        buildPacket(requestPacket, CommandByte::CMD_A_R, pin);
+
+        // debug
+#ifdef TESTMODE
+        Serial.print("Request Command: 0b");
+        Serial.println(static_cast<uint8_t>(requestPacket.commandByte.command), BIN);
+        Serial.print("Request ECC: 0b");
+        Serial.println(requestPacket.commandByte.ecc, BIN);
+#endif
+
+        sendPacket(requestPacket, addr);
+
+        // debug
+#ifdef TESTMODE
+        Serial.println("Request sent, waiting for reply...");
+#endif
+
+        // Receive response (4 bytes: command + port + 2 data bytes)
+        Packet replyPacket;
+        if (!recvPacket(replyPacket, 4, addr))
+        {
+            return -1;
+        }
+
+        // debug
+#ifdef TESTMODE
+        Serial.println("Reply received");
+        Serial.print("Reply Command: 0b");
+        Serial.println(static_cast<uint8_t>(replyPacket.commandByte.command), BIN);
+        Serial.print("Reply ECC: 0b");
+        Serial.println(replyPacket.commandByte.ecc, BIN);
+        Serial.print("Reply Data[0]: 0b");
+        Serial.println(replyPacket.data[0].data, BIN);
+        Serial.print("Reply Data[1]: 0b");
+        Serial.println(replyPacket.data[1].data, BIN);
+#endif
+
+        // Reconstruct 12-bit value from data bytes
+        uint16_t value = ((replyPacket.data[0].data & 0b00111111) << 6) |
+                         (replyPacket.data[1].data & 0b00111111);
+
+        // debug
+#ifdef TESTMODE
+        Serial.print("Reconstructed Value: ");
+        Serial.println(value);
+#endif
+
+        return value;
+    }
+
+    STM32Relay &STM32Relay::writePPM(uint8_t pin, uint32_t microseconds, uint8_t addr)
+    {
+        // debug
+#ifdef TESTMODE
+        Serial.println("\n=== writePPM Debug ===");
+        Serial.print("Pin: ");
+        Serial.println(pin);
+        Serial.print("Microseconds: ");
+        Serial.println(microseconds);
+#endif
+
+        // Build packet (4 bytes)
+        Packet packet;
+        buildPacket(packet, CommandByte::CMD_SET_PPM, pin, (uint16_t)microseconds);
+
+        // debug
+#ifdef TESTMODE
+        Serial.print("Command: 0b");
+        Serial.println(static_cast<uint8_t>(packet.commandByte.command), BIN);
+        Serial.print("ECC: 0b");
+        Serial.println(packet.commandByte.ecc, BIN);
+        Serial.print("Port Data: 0x");
+        Serial.println(packet.port.data, HEX);
+        Serial.print("Data[0]: 0b");
+        Serial.println(packet.data[0].data, BIN);
+        Serial.print("Data[1]: 0b");
+        Serial.println(packet.data[1].data, BIN);
+#endif
+
+        sendPacket(packet, addr);
+
+        // debug
+#ifdef TESTMODE
+        Serial.println("Packet sent");
+#endif
+
+        return (*this);
+    }
 
 }
