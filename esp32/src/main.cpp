@@ -7,6 +7,9 @@
 
 using namespace Relay;
 
+void testServo();
+void configureSlave();
+
 #ifdef TESTMODE_UART
 UARTDevice uartDev{115200, D8, D9}; // UARTDevice object for Serial1 communication
 STM32Relay myRelay{&uartDev};
@@ -14,52 +17,20 @@ STM32Relay myRelay{&uartDev};
 
 #ifdef TESTMODE_I2C
 I2CMaster i2cDev{}; // I2CDevice object for I2C communication
-STM32Relay myRelay{&i2cDev}; 
+STM32Relay myRelay{&i2cDev};
 #endif
 
+// Configuration version tracking
+const uint8_t CONFIG_VERSION = 1; // Increment when config changes
 
-
-
-
-uint8_t brightness= 0;
+uint8_t brightness = 0;
 uint8_t fadeAmt = 5;
 
 int sensorValue = 0;
 uint8_t btnState = 0;
 
-void testServo() {
-#ifdef TESTMODE
-    Serial.println("Testing servo sweep...");
-#endif
-    
-    // Attach servo to pin 6
-    myRelay.pinMode(STM32Relay::PB3, OUTPUT);
-    
-    // Sweep from 0° to 180°
-    for(int angle = 0; angle <= 180; angle += 10) {
-        uint16_t pulse = map(angle, 0, 180, 1000, 2000);
-#ifdef TESTMODE
-        Serial.print("Angle: ");
-        Serial.print(angle);
-        Serial.print("° -> ");
-        Serial.print(pulse);
-        Serial.println(" us");
-#endif
-        
-        myRelay.writePPM(6, pulse);
-        delay(100);
-    }
-    
-    // Return to center
-    myRelay.writePPM(6, 1500);
-#ifdef TESTMODE
-    Serial.println("Sweep complete!");
-#endif
-}
-
-
-
-void setup(){
+void setup()
+{
 #ifdef TESTMODE
     Serial.begin(115200);
     delay(3000);
@@ -69,107 +40,185 @@ void setup(){
     myRelay.begin();
     delay(100);
     myRelay.pinMode(STM32Relay::PB5, OUTPUT, 0x42);
-    //myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
+    // myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
 
+    myRelay.setExpectedConfigVersion(0x42, CONFIG_VERSION);
 
+    // Send initial configuration
+    configureSlave();
 }
 
-void loop(){
+void loop()
+{
+    // Heartbeat every 500ms
+    static uint32_t lastHeartbeat = 0;
+    if (millis() - lastHeartbeat > 500)
+    {
+        lastHeartbeat = millis();
+
+        // Check slave health
+        bool healthy = myRelay.heartbeat(0x42);
+
+        if (!healthy)
+        {
+#ifdef TESTMODE
+            Serial.println("Slave needs reconfiguration!");
+#endif
+            // Reconfigure slave
+            configureSlave();
+
+            // Verify reconfiguration worked
+            myRelay.heartbeat(0x42);
+        }
+    }
 
 #ifdef TESTMODE_DIGITAL_WRITE
-        myRelay.digitalWrite(STM32Relay::PB5, HIGH, 0x42);
-    #ifdef TESTMODE
-        Serial.println("sent HIGH...");
-    #endif
-        delay(1000);
-        myRelay.digitalWrite(STM32Relay::PB5, LOW, 0x42);
-    #ifdef TESTMODE
-        Serial.println("sent LOW...");
-    #endif
-        delay(1000);
+    myRelay.digitalWrite(STM32Relay::PB5, HIGH, 0x42);
+#ifdef TESTMODE
+    Serial.println("sent HIGH...");
 #endif
-
+    delay(1000);
+    myRelay.digitalWrite(STM32Relay::PB5, LOW, 0x42);
+#ifdef TESTMODE
+    Serial.println("sent LOW...");
+#endif
+    delay(1000);
+#endif
 
 #ifdef TESTMODE_ANALOG_WRITE
     myRelay.analogWrite(STM32Relay::PA8, brightness, 0x42);
     brightness = brightness + fadeAmt;
-    if(brightness == 0 || brightness == 255){
-        fadeAmt = -fadeAmt; 
+    if (brightness == 0 || brightness == 255)
+    {
+        fadeAmt = -fadeAmt;
     }
     delay(30);
 #endif
 
 #ifdef TESTMODE_ANALOG_READ
-        sensorValue = myRelay.analogRead(0xC0);
-    #ifdef TESTMODE
-        Serial.print("Analog Read PA0: ");
-        Serial.println(sensorValue);
-    #endif
+    sensorValue = myRelay.analogRead(0xC0);
+#ifdef TESTMODE
+    Serial.print("Analog Read PA0: ");
+    Serial.println(sensorValue);
+#endif
 
-        brightness = map(sensorValue, 0, 1023, 0, 255);
+    brightness = map(sensorValue, 0, 1023, 0, 255);
 
-        myRelay.analogWrite(STM32Relay::PB5, brightness, 0x42);
-    #ifdef TESTMODE
-        Serial.print("Analog Write PB5: ");
-        Serial.println(brightness);
-    #endif
+    myRelay.analogWrite(STM32Relay::PB5, brightness, 0x42);
+#ifdef TESTMODE
+    Serial.print("Analog Write PB5: ");
+    Serial.println(brightness);
+#endif
 #endif
 
 #ifdef TESTMODE_DIGITAL_READ
-        btnState = myRelay.digitalRead(STM32Relay::PB6);
-    #ifdef TESTMODE
-        Serial.print("Digital Read PB6: ");
-        Serial.println(btnState);  
-    #endif
-        if(btnState == LOW){
-            myRelay.digitalWrite(STM32Relay::PB5, HIGH);    
-        }
-        else{
-            myRelay.digitalWrite(STM32Relay::PB5, LOW);
-        }
+    btnState = myRelay.digitalRead(STM32Relay::PB6);
+#ifdef TESTMODE
+    Serial.print("Digital Read PB6: ");
+    Serial.println(btnState);
 #endif
-
-
+    if (btnState == LOW)
+    {
+        myRelay.digitalWrite(STM32Relay::PB5, HIGH);
+    }
+    else
+    {
+        myRelay.digitalWrite(STM32Relay::PB5, LOW);
+    }
+#endif
 
 #ifdef TESTMODE_WRITEPPM
-        myRelay.writePPM(STM32Relay::PB3, 1500);
-        delay(1000);//digitalread
-        btnState = myRelay.digitalRead(STM32Relay::PB6);
-    #ifdef TESTMODE
-        Serial.print("Digital Read PB6: ");
-        Serial.println(btnState);
-    #endif
-        if(btnState == LOW){
-            myRelay.digitalWrite(STM32Relay::PB5, HIGH);
-        }
-        else{
-            myRelay.digitalWrite(STM32Relay::PB5, LOW);
-        }   
-        myRelay.writePPM(STM32Relay::PB3, 2000);
-        delay(1000);
-        myRelay.writePPM(STM32Relay::PB3, 1000);
-        delay(1000);   
-        myRelay.writePPM(STM32Relay::PB3, 500);
-        delay(1000); 
-        myRelay.writePPM(STM32Relay::PB3, 0);
-        delay(1000);  
-
-        static bool tested = false;
-        if(!tested) {
-            delay(2000);
-            testServo();
-            tested = true;
-        }
-
-        for (int pos = 500; pos <= 2500; pos += 5) { 
-        // in steps of 1 degree
-        myRelay.writePPM(STM32Relay::PB3, pos);              
-        delay(15);                   
+    myRelay.writePPM(STM32Relay::PB3, 1500);
+    delay(1000); // digitalread
+    btnState = myRelay.digitalRead(STM32Relay::PB6);
+#ifdef TESTMODE
+    Serial.print("Digital Read PB6: ");
+    Serial.println(btnState);
+#endif
+    if (btnState == LOW)
+    {
+        myRelay.digitalWrite(STM32Relay::PB5, HIGH);
     }
-    for (int pos = 2500; pos >= 500; pos -= 5) { 
-        myRelay.writePPM(STM32Relay::PB3, pos);              
-        delay(15);                       
+    else
+    {
+        myRelay.digitalWrite(STM32Relay::PB5, LOW);
+    }
+    myRelay.writePPM(STM32Relay::PB3, 2000);
+    delay(1000);
+    myRelay.writePPM(STM32Relay::PB3, 1000);
+    delay(1000);
+    myRelay.writePPM(STM32Relay::PB3, 500);
+    delay(1000);
+    myRelay.writePPM(STM32Relay::PB3, 0);
+    delay(1000);
+
+    static bool tested = false;
+    if (!tested)
+    {
+        delay(2000);
+        testServo();
+        tested = true;
+    }
+
+    for (int pos = 500; pos <= 2500; pos += 5)
+    {
+        // in steps of 1 degree
+        myRelay.writePPM(STM32Relay::PB3, pos);
+        delay(15);
+    }
+    for (int pos = 2500; pos >= 500; pos -= 5)
+    {
+        myRelay.writePPM(STM32Relay::PB3, pos);
+        delay(15);
     }
 #endif
+}
 
+void testServo()
+{
+#ifdef TESTMODE
+    Serial.println("Testing servo sweep...");
+#endif
+
+    // Attach servo to pin 6
+    myRelay.pinMode(STM32Relay::PB3, OUTPUT);
+
+    // Sweep from 0° to 180°
+    for (int angle = 0; angle <= 180; angle += 10)
+    {
+        uint16_t pulse = map(angle, 0, 180, 1000, 2000);
+#ifdef TESTMODE
+        Serial.print("Angle: ");
+        Serial.print(angle);
+        Serial.print("° -> ");
+        Serial.print(pulse);
+        Serial.println(" us");
+#endif
+
+        myRelay.writePPM(6, pulse);
+        delay(100);
+    }
+
+    // Return to center
+    myRelay.writePPM(6, 1500);
+#ifdef TESTMODE
+    Serial.println("Sweep complete!");
+#endif
+}
+
+void configureSlave()
+{
+#ifdef TESTMODE
+    Serial.println("Configuring slave...");
+#endif
+
+    // Send all setup commands
+    myRelay.pinMode(STM32Relay::PB5, OUTPUT, 0x42);
+    myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP, 0x42);
+    myRelay.digitalWrite(STM32Relay::PB5, LOW, 0x42);
+
+    // ... any other configuration
+
+    // Optional: After configuration, slave could increment its version
+    // But we'll rely on heartbeat to detect mismatches
 }

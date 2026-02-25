@@ -7,6 +7,11 @@ using bit = uint8_t;
 using byte = uint8_t;
 
 namespace Relay {
+
+    // Add state flags (for slave response)
+    #define STATE_FLAG_RESET        0x01  // Bit 0: Slave just reset
+    #define STATE_FLAG_ERROR        0x02  // Bit 1: Some error occurred
+
     struct CommandByte {
         enum COMMAND_TYPE : byte {
             CMD_D_W_LOW             = 0b000,
@@ -17,6 +22,12 @@ namespace Relay {
             CMD_SET_PPM             = 0b101,
             CMD_SET_PIN_MODE        = 0b110,
             CMD_EXTENDED            = 0b111
+        };
+
+       enum CMD_EXTENDED : byte{
+            CMD_HEARTBEAT           = 0b000,
+            CMD_STATE_REPORT        = 0b001,
+            CMD_RESET_ANNOUNCE      = 0b010,
         };
 
 

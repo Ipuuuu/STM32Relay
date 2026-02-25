@@ -92,10 +92,110 @@ void buildPacket(Packet& packet, CommandByte::COMMAND_TYPE cmd, uint8_t pin, uin
     packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
 }
 
-STM32Relay::STM32Relay(TDEV *tdev)
-    : tdev(tdev){}
+STM32Relay::STM32Relay(TDEV *tdev): tdev(tdev){
+    // Initialize slave states
+    for(int i = 0; i < MAX_SLAVES; i++) {
+        slaveStates[i].configVersion = 0;
+        slaveStates[i].flags = 0;
+        slaveStates[i].lastHeartbeat = 0;
+        slaveStates[i].connected = false;
+        expectedConfigVersion[i] = 0;
 
+    }
+}
 
+int STM32Relay::getSlaveIndex(uint8_t addr) {
+    // Simple linear search (can be optimized)
+    for(int i = 0; i < MAX_SLAVES; i++) {
+        if(slaveStates[i].lastHeartbeat == addr) // Need better mapping
+            return i;
+    }
+    // Find first empty slot
+    for(int i = 0; i < MAX_SLAVES; i++) {
+        if(!slaveStates[i].connected)
+            return i;
+    }
+    return -1; // No space
+}
+
+bool STM32Relay::heartbeat(uint8_t addr, uint32_t timeout_ms) {
+#ifdef TESTMODE
+    Serial.println("\n=== HEARTBEAT Debug ===");
+    Serial.print("Address: 0x"); Serial.println(addr, HEX);
+#endif
+
+    // Build heartbeat packet
+    Packet heartbeatPacket;
+    heartbeatPacket.commandByte.command = CommandByte::CMD_EXTENDED;
+    heartbeatPacket.commandByte.parity = parity3(CommandByte::CMD_EXTENDED);
+    heartbeatPacket.commandByte.sync = 1;
+    
+    // Use port byte for subcommand
+    heartbeatPacket.port.data = CommandByte::CMD_HEARTBEAT;
+    heartbeatPacket.port.parity = parity6(heartbeatPacket.port.data);
+    heartbeatPacket.port.sync = 0;
+    
+    // Calculate ECC
+    heartbeatPacket.commandByte.ecc = calculateECC(
+        heartbeatPacket.commandByte, 
+        heartbeatPacket.port
+    );
+    
+    // Send heartbeat
+    sendPacket(heartbeatPacket, addr);
+    
+    // Wait for response (expecting 4-byte response with state)
+    uint32_t start = millis();
+    while((millis() - start) < timeout_ms) {
+        if(tdev->available()) {
+            Packet responsePacket;
+            if(recvPacket(responsePacket, 4, addr)) {
+                // Verify it's a state report
+                if(responsePacket.commandByte.command == CommandByte::CMD_EXTENDED &&
+                   responsePacket.port.data == CommandByte::CMD_STATE_REPORT) {
+                    
+                    int idx = getSlaveIndex(addr);
+                    if(idx >= 0) {
+                        // Extract state from data bytes
+                        slaveStates[idx].configVersion = responsePacket.data[0].data;
+                        slaveStates[idx].flags = responsePacket.data[1].data;
+                        slaveStates[idx].lastHeartbeat = millis();
+                        slaveStates[idx].connected = true;
+                        
+#ifdef TESTMODE
+                        Serial.print("Slave version: "); 
+                        Serial.println(slaveStates[idx].configVersion);
+                        Serial.print("Slave flags: 0x");
+                        Serial.println(slaveStates[idx].flags, HEX);
+#endif
+                        
+                        // Check if reconfiguration needed
+                        if(slaveStates[idx].configVersion != expectedConfigVersion[idx] ||
+                           (slaveStates[idx].flags & STATE_FLAG_RESET)) {
+                            return false; // Signal that reconfig needed
+                        }
+                        return true; // Healthy slave
+                    }
+                }
+            }
+        }
+        delay(1);
+    }
+    
+    // Timeout - slave not responding
+    int idx = getSlaveIndex(addr);
+    if(idx >= 0) {
+        slaveStates[idx].connected = false;
+    }
+    return false;
+}
+
+void STM32Relay::setExpectedConfigVersion(uint8_t addr, uint8_t version) {
+    int idx = getSlaveIndex(addr);
+    if(idx >= 0) {
+        expectedConfigVersion[idx] = version;
+    }
+}
 
 void STM32Relay::sendByte(uint8_t byte, uint8_t addr) {
     uint8_t errorCode = tdev->sendByte(byte, addr);

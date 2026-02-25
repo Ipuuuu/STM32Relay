@@ -117,9 +117,25 @@ public:
     STM_NUM_ANALOG_INPUTS = 10
     } pinName;
 
+    // NEW: Heartbeat and state management
+    struct SlaveState {
+        uint8_t configVersion;
+        uint8_t flags;
+        uint32_t lastHeartbeat;
+        bool connected;
+    };
+
 private:
     TDEV *tdev; // transmission device pointer
 
+    // NEW: Store states for multiple slaves (up to 127 I2C addresses)
+    static const int MAX_SLAVES = 10;
+    SlaveState slaveStates[MAX_SLAVES];
+    uint8_t expectedConfigVersion[MAX_SLAVES];
+    
+    // Helper to get slave index from address
+    int getSlaveIndex(uint8_t addr);
+    
 public:
     // STM32Relay constructor
     // @param tdev : transmission device pointer
@@ -153,6 +169,12 @@ public:
     STM32Relay&  writePPM(uint8_t pin, uint32_t microseconds, uint8_t addr = 0x00);
     STM32Relay&  pinMode(uint8_t pin, uint8_t mode, uint8_t addr = 0x00);
 
+    // NEW: Send heartbeat and get slave state
+    bool heartbeat(uint8_t addr, uint32_t timeout_ms = 100);
+    // NEW: Get last known slave state
+    const SlaveState& getSlaveState(uint8_t addr) const;
+    // NEW: Set expected config version for a slave
+    void setExpectedConfigVersion(uint8_t addr, uint8_t version);
 };
 
 
