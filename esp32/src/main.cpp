@@ -6,6 +6,7 @@
 #include "config.h"
 
 using namespace Relay;
+using namespace commapi;
 
 void testServo();
 void configureSlave();
@@ -40,6 +41,8 @@ void setup()
     myRelay.begin();
     delay(100);
     myRelay.pinMode(STM32Relay::PB5, OUTPUT, 0x42);
+    myRelay.pinMode(STM32Relay::PA8, OUTPUT, 0x42);
+
     // myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
 
     myRelay.setExpectedConfigVersion(0x42, CONFIG_VERSION);
@@ -96,7 +99,7 @@ void loop()
 #endif
 
 #ifdef TESTMODE_ANALOG_READ
-    sensorValue = myRelay.analogRead(0xC0);
+    sensorValue = myRelay.analogRead(STM32Relay::PA0, 0x42);
 #ifdef TESTMODE
     Serial.print("Analog Read PA0: ");
     Serial.println(sensorValue);

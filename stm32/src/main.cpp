@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include "ReceiverProtocol.h"
-#include "tlib.h"
+#include "commapi.h"
 #include <Wire.h>
 
 #include "config.h"

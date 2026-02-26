@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include "ECC.h"
-#include "tlib.h"
+#include "commapi.h"
 #include <Servo.h>
 
 #include "config.h"
@@ -84,7 +84,7 @@ namespace Receiver
         };
 
     private:
-        TDEV *tdev; // transmission device
+        commapi::ICOMM *tdev; // transmission device
         State currentState;
         Relay::Packet currentPacket;
         int expectedDataBytes;
@@ -101,10 +101,10 @@ namespace Receiver
         uint8_t configVersion; // Current configuration version
         uint8_t stateFlags;    // Current state flags
     public:
-        ProtocolHandler(TDEV *tdev);
+        ProtocolHandler(commapi::ICOMM *tdev);
 
         void begin() { tdev->begin(); }
-        void recover() { tdev->recover(); }
+        void recover() { tdev->recoverIfNeeded(); }
         void processIncomingByte(uint8_t byte);
         void processIncomingBytes();
 

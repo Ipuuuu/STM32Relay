@@ -4,7 +4,7 @@
 namespace Receiver
 {
 
-    ProtocolHandler::ProtocolHandler(TDEV *tdev)
+    ProtocolHandler::ProtocolHandler(commapi::ICOMM *tdev)
         : tdev(tdev), currentState(IDLE), expectedDataBytes(0),
           receivedDataBytes(0), servoCount(0),
           configVersion(0), stateFlags(STATE_FLAG_RESET)
@@ -61,7 +61,8 @@ namespace Receiver
     {
         while (tdev->available())
         {
-            uint8_t byte = tdev->recvByte();
+            uint8_t byte;
+            tdev->receive(&byte, 1);
             processIncomingByte(byte);
         }
     }
@@ -528,8 +529,8 @@ namespace Receiver
         uint8_t byte1 = *reinterpret_cast<uint8_t *>(&responsePacket.commandByte);
         uint8_t byte2 = *reinterpret_cast<uint8_t *>(&responsePacket.port);
 
-        tdev->sendByte(byte1);
-        tdev->sendByte(byte2);
+        tdev->send(byte1);
+        tdev->send(byte2);
 
 #ifdef TESTMODE
         Serial.print("[TX] Sent: 0x");
@@ -579,10 +580,10 @@ namespace Receiver
         uint8_t byte3 = *reinterpret_cast<uint8_t *>(&responsePacket.data[0]);
         uint8_t byte4 = *reinterpret_cast<uint8_t *>(&responsePacket.data[1]);
 
-        tdev->sendByte(byte1);
-        tdev->sendByte(byte2);
-        tdev->sendByte(byte3);
-        tdev->sendByte(byte4);
+        tdev->send(byte1);
+        tdev->send(byte2);
+        tdev->send(byte3);
+        tdev->send(byte4);
 
 #ifdef TESTMODE
         Serial.print("[TX] Sent: 0x");
@@ -612,7 +613,7 @@ namespace Receiver
         responsePacket.commandByte.ecc = 0; // No ECC needed for single-byte response
 
         uint8_t byte = *reinterpret_cast<uint8_t *>(&responsePacket.commandByte);
-        tdev->sendByte(byte);
+        tdev->send(byte);
 
 #ifdef TESTMODE
         Serial.print("[TX] Sent: 0x");
@@ -726,7 +727,7 @@ namespace Receiver
         // // Send 4 bytes
         // uint8_t bytes[4];
         // packetToBytes(responsePacket, bytes, 2);
-        // tdev->sendBytes(bytes, 4);
+        // tdev->send(bytes, 4);
 
         // Send bytes
         uint8_t byte1 = *reinterpret_cast<uint8_t *>(&responsePacket.commandByte);
@@ -734,10 +735,10 @@ namespace Receiver
         uint8_t byte3 = *reinterpret_cast<uint8_t *>(&responsePacket.data[0]);
         uint8_t byte4 = *reinterpret_cast<uint8_t *>(&responsePacket.data[1]);
 
-        tdev->sendByte(byte1);
-        tdev->sendByte(byte2);
-        tdev->sendByte(byte3);
-        tdev->sendByte(byte4);
+        tdev->send(byte1);
+        tdev->send(byte2);
+        tdev->send(byte3);
+        tdev->send(byte4);
     }
 
 } // namespace Receiver

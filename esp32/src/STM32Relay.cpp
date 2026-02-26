@@ -101,7 +101,7 @@ namespace Relay
         packet.commandByte.ecc = calculateECC(packet.commandByte, packet.port);
     }
 
-    STM32Relay::STM32Relay(TDEV *tdev) : tdev(tdev)
+    STM32Relay::STM32Relay(commapi::ICOMM *tdev) : tdev(tdev)
     {
         // Initialize slave states
         for (int i = 0; i < MAX_SLAVES; i++)
@@ -222,7 +222,7 @@ namespace Relay
 
     void STM32Relay::sendByte(uint8_t byte, uint8_t addr)
     {
-        uint8_t errorCode = tdev->sendByte(byte, addr);
+        uint8_t errorCode = tdev->send(byte, addr);
         if (errorCode != 0)
         {
 #ifdef TESTMODE
@@ -235,7 +235,7 @@ namespace Relay
 
     void STM32Relay::sendBytes(const uint8_t *bytes, size_t length, uint8_t addr)
     {
-        uint8_t errorCode = tdev->sendBytes(bytes, length, addr);
+        uint8_t errorCode = tdev->send(bytes, length, addr);
         if (errorCode != 0)
         {
 #ifdef TESTMODE
@@ -258,7 +258,7 @@ namespace Relay
         packetToBytes(packet, bytes, numDataBytes);
 
         // Send all bytes
-        uint8_t errorCode = tdev->sendBytes(bytes, 2 + numDataBytes, addr);
+        uint8_t errorCode = tdev->send(bytes, 2 + numDataBytes, addr);
         return (*this);
     }
 
@@ -267,14 +267,7 @@ namespace Relay
         uint8_t bytes[4] = {0};
 
         // Receive bytes
-        for (int i = 0; i < expectedBytes; i++)
-        {
-            bytes[i] = tdev->recvByte(addr);
-            if (bytes[i] == 0xFF)
-            { // Timeout
-                return false;
-            }
-        }
+        if (tdev->receive(bytes, expectedBytes, addr) == 0xFF) return false;
 
         // Convert to packet structure
         int numDataBytes = expectedBytes - 2; // Subtract command and port bytes

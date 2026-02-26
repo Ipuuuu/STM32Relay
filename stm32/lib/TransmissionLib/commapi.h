@@ -52,7 +52,6 @@ class ICOMM{
         virtual uint8_t send(const uint8_t *bytes, uint8_t length, uint8_t addr = 0x00) = 0;
         virtual uint8_t send(uint8_t byte, uint8_t addr = 0x00){return send(&byte, 1, addr);}
 
-
         // to receive bytes
         virtual uint8_t receive(uint8_t *buf, uint8_t length, uint8_t addr = 0x00) = 0;
 

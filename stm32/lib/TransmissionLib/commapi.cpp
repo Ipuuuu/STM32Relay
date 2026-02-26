@@ -1,4 +1,4 @@
-#include "tlib.h"
+#include "commapi.h"
 
 namespace commapi{
 
@@ -41,10 +41,6 @@ namespace commapi{
         uart_port->write(bytes, length);
         uart_port->flush();
         return 0; // Success
-    }
-
-    uint8_t UARTDevice::recvByte(uint8_t addr){
-        return uart_port->read();
     }
 
     uint8_t UARTDevice::receive(uint8_t *buf, uint8_t length, uint8_t addr){
@@ -108,7 +104,7 @@ namespace commapi{
         
         I2CPacket packet{I2CCMD::WRITE, length};
 
-        wire->write(packet.encode(), 1);
+        wire->write(packet.encode());
         wire->write(bytes, length);
 
         return wire->endTransmission();
@@ -231,7 +227,7 @@ namespace commapi{
         return 0; // Success
     }
 
-    uint8_t I2CSlave::send(const uint8_t *bytes, size_t length, uint8_t addr){
+    uint8_t I2CSlave::send(const uint8_t *bytes, uint8_t length, uint8_t addr){
         for(size_t i = 0; i < length; i++){
             if(txBufferIndex < sizeof(txBuffer)) txBuffer[txBufferIndex++] = bytes[i];
             else break; // Buffer full, stop adding more bytes
@@ -241,19 +237,6 @@ namespace commapi{
 
     // each call of this function will return
     // the next byte from the received byte stream
-    uint8_t I2CSlave::recvByte(uint8_t){
-        noInterrupts();
-        if(rxNext >= rxBufferIndex){
-            rxNext = rxBufferIndex = 0;
-            interrupts();
-            return 0xFF;
-        }
-        
-        uint8_t value = rxBuffer[rxNext++];
-        if(rxNext >= rxBufferIndex) rxNext = rxBufferIndex = 0;
-        interrupts();
-        return value;
-    }
 
     uint8_t I2CSlave::receive(uint8_t *buf, uint8_t length, uint8_t){
         if(!buf || !length) return 0xFF;

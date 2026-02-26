@@ -1,7 +1,7 @@
 #pragma once
 
 // uncomment to enable debug prints
-//#define TESTMODE
+#define TESTMODE
 
 // uncomment to enable UART test mode
 //#define TESTMODE_UART
@@ -16,10 +16,10 @@
 //#define TESTMODE_DIGITAL_WRITE
 
 //uncomment to test ANALOG WRITE with LED FADE
-#define TESTMODE_ANALOG_WRITE
+//#define TESTMODE_ANALOG_WRITE
 
 //uncomment to test ANALOG READ with POTENTIOMETER
-//#define TESTMODE_ANALOG_READ
+#define TESTMODE_ANALOG_READ
 
 //uncomment to test DIGITAL READ with BUTTON
 //#define TESTMODE_DIGITAL_READ

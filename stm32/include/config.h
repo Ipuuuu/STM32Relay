@@ -4,7 +4,7 @@
 #define I2C_ADDRESS 0x42
 
 // uncomment to enable debug prints
-//#define TESTMODE
+#define TESTMODE
 
 // uncomment to enable UART test mode
 //#define TESTMODE_UART
