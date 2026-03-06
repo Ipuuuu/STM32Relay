@@ -166,13 +166,4 @@ class I2CSlave : public ICOMM{
         
 };
 
-// Global objects
-// i am not sure about adding these or not
-// because it involves assuming the use of certain transmission devices, and it may cause static initialization order issues.
-
-//extern UARTDevice uartDev{115200, D8, D9}; // UARTDevice object for Serial1 communication
-//extern I2CMaster i2cDev{}; // I2CDevice object for I2C communication
-//extern I2CSlave i2cSlaveDev{I2C_ADDR_MASTER}; // I2CSlave object for I2C slave communication
-
-
 };
