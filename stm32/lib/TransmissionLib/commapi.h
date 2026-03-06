@@ -69,7 +69,7 @@ class ICOMM{
 // UART Base Class
 class UARTDevice : public ICOMM{
     private:
-        std::unique_ptr<HardwareSerial> uart_port; // serial port
+        HardwareSerial *uart_port; // serial port
         uint8_t txPin, rxPin; // serial pins
         
         uint32_t tout; // timeout
@@ -79,14 +79,14 @@ class UARTDevice : public ICOMM{
         uint8_t sendByte(uint8_t byte, uint8_t addr = 0x00) override;
 
     public:
-        explicit UARTDevice(uint32_t baud, uint8_t rxPin, uint8_t txPin);
+        explicit UARTDevice(HardwareSerial &serial, uint32_t baud, uint8_t rxPin, uint8_t txPin);
 
         UARTDevice(const UARTDevice&) = delete;
         UARTDevice &operator=(const UARTDevice&) = delete;
         UARTDevice(UARTDevice&&) = delete;
         UARTDevice &operator=(UARTDevice&&) = delete;
 
-        ~UARTDevice();
+        ~UARTDevice() = default;
 
         // will wrap the uart_port.begin() function, possibly with error checks
         void begin() override;
@@ -109,21 +109,21 @@ class UARTDevice : public ICOMM{
 // I2C Master Class
 class I2CMaster : public ICOMM{
     private:
-        std::unique_ptr<TwoWire> wire;
+        TwoWire *wire;
 
         // send bytes through the UART device
         uint8_t sendByte(uint8_t byte, uint8_t addr = 0x00) override;
 
     public:
         // SDA and SCL pins can be set at the constructor of the TwoWire object, so no need to set them here
-        explicit I2CMaster();
+        explicit I2CMaster(TwoWire &wire);
 
         I2CMaster(const I2CMaster&) = delete;
         I2CMaster& operator=(const I2CMaster&) = delete;
         I2CMaster(I2CMaster&&) = delete;
         I2CMaster& operator=(I2CMaster&&) = delete;
 
-        ~I2CMaster();
+        ~I2CMaster() = default;
 
         // initialize device
         void begin() override;
@@ -147,7 +147,7 @@ class I2CMaster : public ICOMM{
 
 class I2CSlave : public ICOMM{
     private:
-        std::unique_ptr<TwoWire> wire;
+        TwoWire *wire;
 
         uint8_t rxBuffer[32]; // received buffer
         uint8_t txBuffer[32]; // transmit buffer
@@ -171,14 +171,14 @@ class I2CSlave : public ICOMM{
     public:
 
         // SDA and SCL pins can be set at the constructor of the TwoWire object, so no need to set them here
-        explicit I2CSlave(uint8_t address);
+        explicit I2CSlave(TwoWire &wire, uint8_t address);
 
         I2CSlave(const I2CSlave&) = delete;
         I2CSlave& operator=(const I2CSlave&) = delete;
         I2CSlave(I2CSlave&&) = delete;
         I2CSlave& operator=(I2CSlave&&) = delete;
 
-        ~I2CSlave();
+        ~I2CSlave() = default;
 
         void begin() override;
         

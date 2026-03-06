@@ -7,12 +7,12 @@
 #include "config.h"
 
 #ifdef TESTMODE_UART
-commapi::UARTDevice uartDevice{115200, PB9, PB10};
+commapi::UARTDevice uartDevice{Serial1, 115200, PB9, PB10};
 Receiver::ProtocolHandler handler{&uartDevice};
 #endif
 
 #ifdef TESTMODE_I2C
-commapi::I2CSlave i2cDevice(I2C_ADDRESS);
+commapi::I2CSlave i2cDevice(Wire, I2C_ADDRESS);
 Receiver::ProtocolHandler handler(&i2cDevice);
 #endif
 

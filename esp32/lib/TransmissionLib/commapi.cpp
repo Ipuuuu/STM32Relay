@@ -6,17 +6,11 @@ namespace commapi{
     /* UART Device Implementation */
     // ###########################
 
-    UARTDevice::UARTDevice(uint32_t baud, uint8_t rxPin, uint8_t txPin)
-        : tout(1000), baud(baud), rxPin(rxPin), txPin(txPin){
+    UARTDevice::UARTDevice(HardwareSerial &serial, uint32_t baud, uint8_t rxPin, uint8_t txPin)
+        : uart_port(&serial), tout(1000), baud(baud), rxPin(rxPin), txPin(txPin)
+    {
     
-        #ifdef ARDUINO_ARCH_STM32
-            uart_port = std::make_unique<HardwareSerial>(rxPin, txPin);
-        #else
-            uart_port = std::make_unique<HardwareSerial>(1); // UART1
-        #endif
     }
-
-    UARTDevice::~UARTDevice(){}
 
     void UARTDevice::begin(){
         #ifdef ARDUINO_ARCH_STM32
@@ -74,15 +68,9 @@ namespace commapi{
     /* I2C Master Implementation */
     // ###########################
 
-    I2CMaster::I2CMaster() {
-        #ifdef ARDUINO_ARCH_STM32
-            wire = std::make_unique<TwoWire>();
-        #else
-            wire = std::make_unique<TwoWire>(0); // I2C0
-        #endif
+    I2CMaster::I2CMaster(TwoWire &wire) : wire(&wire) {
+        // No need to create a new TwoWire instance
     }
-
-    I2CMaster::~I2CMaster() {}
 
     void I2CMaster::begin(){
         #ifdef ARDUINO_ARCH_STM32
@@ -192,18 +180,13 @@ namespace commapi{
     }
 
 
-    I2CSlave::I2CSlave(uint8_t address)
-        : addr(address), 
+    I2CSlave::I2CSlave(TwoWire &wire, uint8_t address)
+        : wire(&wire), addr(address), 
           txBufferIndex(0), rxBufferIndex(0), rxNext(0),
-          lastReceiveTime(0), busActive(false), preparedLen(0) {
-            #ifdef ARDUINO_ARCH_STM32
-                wire = std::make_unique<TwoWire>();
-            #else
-                wire = std::make_unique<TwoWire>(0); // I2C0
-            #endif
-        }
+          lastReceiveTime(0), busActive(false), preparedLen(0) 
+        {
 
-    I2CSlave::~I2CSlave() {}
+        }
 
     // Initialize the slave connection
     // sets the address to addr

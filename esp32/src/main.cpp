@@ -12,12 +12,12 @@ void testServo();
 void configureSlave();
 
 #ifdef TESTMODE_UART
-UARTDevice uartDev{115200, D8, D9}; // UARTDevice object for Serial1 communication
+UARTDevice uartDev{Serial1, 115200, D8, D9}; // UARTDevice object for Serial1 communication
 STM32Relay myRelay{&uartDev};
 #endif
 
 #ifdef TESTMODE_I2C
-I2CMaster i2cDev{}; // I2CDevice object for I2C communication
+I2CMaster i2cDev{Wire}; // I2CDevice object for I2C communication
 STM32Relay myRelay{&i2cDev};
 #endif
 
