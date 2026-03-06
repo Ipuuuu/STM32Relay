@@ -40,8 +40,6 @@ void setup()
 
     myRelay.begin();
     delay(100);
-    myRelay.pinMode(STM32Relay::PB5, OUTPUT, 0x42);
-    myRelay.pinMode(STM32Relay::PA8, OUTPUT, 0x42);
 
     // myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP);
 

@@ -413,6 +413,9 @@ namespace Relay
         Serial.println("Request sent, waiting for reply...");
 #endif
 
+        // Give slave time to process command and load txBuffer
+        delay(50);
+
         // Receive response (2 bytes: command + data)
         Packet replyPacket;
         if (!recvPacket(replyPacket, 2, addr))
@@ -519,6 +522,9 @@ namespace Relay
 #ifdef TESTMODE
         Serial.println("Request sent, waiting for reply...");
 #endif
+
+        // Give slave time to process command and load txBuffer
+        delay(50);
 
         // Receive response (4 bytes: command + port + 2 data bytes)
         Packet replyPacket;
