@@ -165,7 +165,7 @@ namespace commapi{
     I2CSlave::I2CSlave(TwoWire &wire, uint8_t sdaPin, uint8_t sclPin, uint8_t address)
         : wire(&wire), sdaPin(sdaPin), sclPin(sclPin), addr(address), 
           txBufferIndex(0), rxBufferIndex(0), rxNext(0),
-          lastReceiveTime(0), busActive(false), preparedLen(0) 
+          lastReceiveTime(0), busActive(false)
         {
 
         }

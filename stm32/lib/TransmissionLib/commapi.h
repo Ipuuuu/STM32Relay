@@ -128,8 +128,6 @@ class I2CSlave : public ICOMM{
         volatile uint8_t rxBufferIndex, rxNext; // rxBufferIndex for receiving, rxNext for byte
         volatile uint8_t txBufferIndex;
 
-        uint8_t preparedLen;
-
         uint8_t addr;
 
         volatile uint32_t lastReceiveTime;
