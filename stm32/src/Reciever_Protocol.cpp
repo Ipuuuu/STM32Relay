@@ -575,25 +575,23 @@ namespace Receiver
             responsePacket.port);
 
         // Send bytes
-        uint8_t byte1 = *reinterpret_cast<uint8_t *>(&responsePacket.commandByte);
-        uint8_t byte2 = *reinterpret_cast<uint8_t *>(&responsePacket.port);
-        uint8_t byte3 = *reinterpret_cast<uint8_t *>(&responsePacket.data[0]);
-        uint8_t byte4 = *reinterpret_cast<uint8_t *>(&responsePacket.data[1]);
+        uint8_t bytes[4];
+        bytes[0] = *reinterpret_cast<uint8_t *>(&responsePacket.commandByte);
+        bytes[1] = *reinterpret_cast<uint8_t *>(&responsePacket.port);
+        bytes[2] = *reinterpret_cast<uint8_t *>(&responsePacket.data[0]);
+        bytes[3] = *reinterpret_cast<uint8_t *>(&responsePacket.data[1]);
 
-        tdev->send(byte1);
-        tdev->send(byte2);
-        tdev->send(byte3);
-        tdev->send(byte4);
+        tdev->send(bytes, 4);
 
 #ifdef TESTMODE
         Serial.print("[TX] Sent: 0x");
-        Serial.print(byte1, HEX);
+        Serial.print(bytes[0], HEX);
         Serial.print(" 0x");
-        Serial.print(byte2, HEX);
+        Serial.print(bytes[1], HEX);
         Serial.print(" 0x");
-        Serial.print(byte3, HEX);
+        Serial.print(bytes[2], HEX);
         Serial.print(" 0x");
-        Serial.println(byte4, HEX);
+        Serial.println(bytes[3], HEX);
 #endif
     }
 
