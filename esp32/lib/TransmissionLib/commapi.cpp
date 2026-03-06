@@ -83,36 +83,26 @@ namespace commapi{
     uint8_t I2CMaster::sendByte(uint8_t byte, uint8_t addr){
         wire->beginTransmission(addr);
         wire->write(byte);
-
         return wire->endTransmission();
     }
 
     uint8_t I2CMaster::send(const uint8_t *bytes, uint8_t length, uint8_t addr){
         wire->beginTransmission(addr);
-        
-        I2CPacket packet{I2CCMD::WRITE, length};
-
-        wire->write(packet.encode());
         wire->write(bytes, length);
-
         return wire->endTransmission();
     }
 
     uint8_t I2CMaster::receive(uint8_t *buf, uint8_t length, uint8_t addr){
         if(!buf || !length) return 0xFF;
 
-        I2CPacket packet{I2CCMD::READ, length};
-        sendByte(packet.encode(), addr);
-        delay(10);
+        uint8_t received = wire->requestFrom(addr, static_cast<uint8_t>(length));
+        if(received == 0) return 0xFF; // No bytes received or error
 
-        wire->requestFrom(addr, static_cast<uint8_t>(length));
-        uint8_t requested_bytes = wire->available();
-        if(!requested_bytes) return 0XFF;
-        
-        while(wire->available() && length--){
-            *buf++ = wire->read();
+        uint8_t bytesRead = 0;
+        while(wire->available() && bytesRead < length){
+            buf[bytesRead++] = wire->read();
         }
-        return 0; // Success
+        return bytesRead;
     }
 
     // available overriding (add later)
@@ -154,29 +144,21 @@ namespace commapi{
         slave->lastReceiveTime = millis();
         slave->busActive = true;
 
-        // receive the command byte first and prepare the txBuffer if its a read
-        I2CPacket packet;
-        if(slave->wire->available()) packet.decode(slave->wire->read());
-        if(packet.cmd == static_cast<uint8_t>(I2CCMD::READ)){
-            slave->preparedLen = packet.len;
-        }else if(packet.cmd == static_cast<uint8_t>(I2CCMD::WRITE)){
-            while(slave->wire->available()){
-                uint8_t x = slave->wire->read();
-                if(slave->rxBufferIndex < sizeof(slave->rxBuffer)) slave->rxBuffer[slave->rxBufferIndex++] = x;
-            }
+        slave->rxBufferIndex = 0;
+        slave->rxNext = 0;
+        while(slave->wire->available() && slave->rxBufferIndex < sizeof(slave->rxBuffer)){
+            slave->rxBuffer[slave->rxBufferIndex++] = slave->wire->read();
         }
     }
 
     // called on master read from slave, writes bytes from txBuffer
     void I2CSlave::onI2CRequest(){
         if(!slave) return;
-        if(slave->txBufferIndex == 0 || (slave->preparedLen > slave->txBufferIndex)) {
-            slave->wire->write(0xFF); // send dummy byte to prevent clock stretch hang
+        if(slave->txBufferIndex > 0){
+            slave->wire->write(slave->txBuffer, slave->txBufferIndex);
         } else {
-            slave->wire->write(slave->txBuffer, slave->preparedLen);
+            slave->wire->write(0xFF);
         }
-        slave->preparedLen = 0;
-        slave->txBufferIndex = 0;
     }
 
 
@@ -206,15 +188,21 @@ namespace commapi{
     // this function will stack the bytes to be sent
     // until the master requests those
     uint8_t I2CSlave::sendByte(uint8_t byte, uint8_t){
-        if(txBufferIndex < sizeof(txBuffer)) txBuffer[txBufferIndex++] = byte;
-        return 0; // Success
+        if(txBufferIndex < sizeof(txBuffer)) {
+            txBuffer[txBufferIndex++] = byte; 
+            return 0;
+        }
+        return 0xFF; // Buffer full
     }
 
     uint8_t I2CSlave::send(const uint8_t *bytes, uint8_t length, uint8_t addr){
-        for(size_t i = 0; i < length; i++){
-            if(txBufferIndex < sizeof(txBuffer)) txBuffer[txBufferIndex++] = bytes[i];
-            else break; // Buffer full, stop adding more bytes
+        noInterrupts();
+        txBufferIndex = 0; // Reset buffer index before adding new data
+        for(uint8_t i = 0; i < length && i < sizeof(txBuffer); i++){
+            txBuffer[txBufferIndex++] = bytes[i];
         }
+        txBufferIndex = (length < sizeof(txBuffer)) ? length : sizeof(txBuffer); // Ensure we don't exceed buffer size
+        interrupts();
         return 0; // Success
     }
 

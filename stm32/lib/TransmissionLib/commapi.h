@@ -8,34 +8,6 @@
 #include <memory>
 
 namespace commapi{
-
-enum class I2CCMD : uint8_t{
-    WRITE = 0,
-    READ = 1,
-};
-
-struct I2CPacket{
-    uint8_t cmd : 3;
-    uint8_t len : 5;
-
-    explicit I2CPacket() : cmd(0), len(0) {}
-    explicit I2CPacket(I2CCMD cmd, uint8_t len) : cmd(static_cast<uint8_t>(cmd)), len(len) {}
-
-    I2CPacket(const I2CPacket&) = delete;
-    I2CPacket& operator=(const I2CPacket&) = delete;
-    I2CPacket(I2CPacket&&) = delete;
-    I2CPacket& operator=(I2CPacket&&) = delete;
-
-    uint8_t encode() const {
-        return (cmd & 0x07) | ((len & 0x1F) << 3);
-    }
-
-    I2CPacket &decode(uint8_t byte) {
-        cmd = byte & 0x07;
-        len = (byte >> 3) & 0x1F;
-        return *this;
-    }
-};
     
 // Communication Interface Class
 class ICOMM{
