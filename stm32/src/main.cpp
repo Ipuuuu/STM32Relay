@@ -12,7 +12,7 @@ Receiver::ProtocolHandler handler{&uartDevice};
 #endif
 
 #ifdef TESTMODE_I2C
-commapi::I2CSlave i2cDevice(Wire, I2C_ADDRESS);
+commapi::I2CSlave i2cDevice(Wire, PB5, PB6, I2C_ADDRESS);
 Receiver::ProtocolHandler handler(&i2cDevice);
 #endif
 

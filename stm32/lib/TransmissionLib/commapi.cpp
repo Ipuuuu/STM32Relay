@@ -68,7 +68,7 @@ namespace commapi{
     /* I2C Master Implementation */
     // ###########################
 
-    I2CMaster::I2CMaster(TwoWire &wire) : wire(&wire) {
+    I2CMaster::I2CMaster(TwoWire &wire, uint8_t sdaPin, uint8_t sclPin) : wire(&wire), sdaPin(sdaPin), sclPin(sclPin) {
         // No need to create a new TwoWire instance
     }
 
@@ -76,7 +76,7 @@ namespace commapi{
         #ifdef ARDUINO_ARCH_STM32
             wire->begin();
         #else
-            wire->begin(SDA, SCL); // ESP32 default pins, or pass custom ones
+            wire->begin(sdaPin, sclPin); // ESP32 default pins, or pass custom ones
         #endif
     }
 
@@ -162,8 +162,8 @@ namespace commapi{
     }
 
 
-    I2CSlave::I2CSlave(TwoWire &wire, uint8_t address)
-        : wire(&wire), addr(address), 
+    I2CSlave::I2CSlave(TwoWire &wire, uint8_t sdaPin, uint8_t sclPin, uint8_t address)
+        : wire(&wire), sdaPin(sdaPin), sclPin(sclPin), addr(address), 
           txBufferIndex(0), rxBufferIndex(0), rxNext(0),
           lastReceiveTime(0), busActive(false), preparedLen(0) 
         {
@@ -178,7 +178,7 @@ namespace commapi{
         #ifdef ARDUINO_ARCH_STM32
             wire->begin(addr);
         #else
-            wire->begin(SDA, SCL, addr); // ESP32 default pins, or pass custom ones
+            wire->begin(sdaPin, sclPin, addr); // ESP32 default pins, or pass custom ones
         #endif
 
         wire->onReceive(onI2CReceive);

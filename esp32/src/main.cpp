@@ -17,7 +17,7 @@ STM32Relay myRelay{&uartDev};
 #endif
 
 #ifdef TESTMODE_I2C
-I2CMaster i2cDev{Wire}; // I2CDevice object for I2C communication
+I2CMaster i2cDev{Wire, D10, D11}; // I2CDevice object for I2C communication
 STM32Relay myRelay{&i2cDev};
 #endif
 

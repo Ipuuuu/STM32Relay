@@ -82,13 +82,14 @@ class UARTDevice : public ICOMM{
 class I2CMaster : public ICOMM{
     private:
         TwoWire *wire;
+        uint8_t sdaPin, sclPin;
 
         // send bytes through the UART device
         uint8_t sendByte(uint8_t byte, uint8_t addr = 0x00) override;
 
     public:
         // SDA and SCL pins can be set at the constructor of the TwoWire object, so no need to set them here
-        explicit I2CMaster(TwoWire &wire);
+        explicit I2CMaster(TwoWire &wire, uint8_t sdaPin, uint8_t sclPin);
 
         I2CMaster(const I2CMaster&) = delete;
         I2CMaster& operator=(const I2CMaster&) = delete;
@@ -120,6 +121,7 @@ class I2CMaster : public ICOMM{
 class I2CSlave : public ICOMM{
     private:
         TwoWire *wire;
+        uint8_t sdaPin, sclPin;
 
         uint8_t rxBuffer[32]; // received buffer
         uint8_t txBuffer[32]; // transmit buffer
@@ -143,7 +145,7 @@ class I2CSlave : public ICOMM{
     public:
 
         // SDA and SCL pins can be set at the constructor of the TwoWire object, so no need to set them here
-        explicit I2CSlave(TwoWire &wire, uint8_t address);
+        explicit I2CSlave(TwoWire &wire, uint8_t sdaPin, uint8_t sclPin, uint8_t address);
 
         I2CSlave(const I2CSlave&) = delete;
         I2CSlave& operator=(const I2CSlave&) = delete;
