@@ -524,7 +524,7 @@ namespace Relay
 #endif
 
         // Give slave time to process command and load txBuffer
-        delay(50);
+        delay(10);
 
         // Receive response (4 bytes: command + port + 2 data bytes)
         Packet replyPacket;

@@ -19,10 +19,10 @@
 //#define TESTMODE_ANALOG_WRITE
 
 //uncomment to test ANALOG READ with POTENTIOMETER
-#define TESTMODE_ANALOG_READ
+//#define TESTMODE_ANALOG_READ
 
 //uncomment to test DIGITAL READ with BUTTON
-//#define TESTMODE_DIGITAL_READ
+#define TESTMODE_DIGITAL_READ
 
 //uncomment to enable test mode for writePPM
 //#define TESTMODE_WRITEPPM

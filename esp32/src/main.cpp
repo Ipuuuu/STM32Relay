@@ -97,15 +97,17 @@ void loop()
 #endif
 
 #ifdef TESTMODE_ANALOG_READ
-    sensorValue = myRelay.analogRead(STM32Relay::PA0, 0x42);
+    sensorValue = myRelay.analogRead(STM32Relay::PA1, 0x42);
+    sensorValue = sensorValue > 1000 ? sensorValue : 0; // simple noise filtering
+    
 #ifdef TESTMODE
     Serial.print("Analog Read PA0: ");
     Serial.println(sensorValue);
 #endif
 
     brightness = map(sensorValue, 0, 1023, 0, 255);
-
-    myRelay.analogWrite(STM32Relay::PB5, brightness, 0x42);
+    
+    myRelay.analogWrite(STM32Relay::PA7, brightness, 0x42);
 #ifdef TESTMODE
     Serial.print("Analog Write PB5: ");
     Serial.println(brightness);
@@ -113,18 +115,18 @@ void loop()
 #endif
 
 #ifdef TESTMODE_DIGITAL_READ
-    btnState = myRelay.digitalRead(STM32Relay::PB6);
+    btnState = myRelay.digitalRead(STM32Relay::PB1, 0x42);
 #ifdef TESTMODE
-    Serial.print("Digital Read PB6: ");
+    Serial.print("Digital Read PB1: ");
     Serial.println(btnState);
 #endif
     if (btnState == LOW)
     {
-        myRelay.digitalWrite(STM32Relay::PB5, HIGH);
+        myRelay.digitalWrite(STM32Relay::PB3, HIGH, 0x42);
     }
     else
     {
-        myRelay.digitalWrite(STM32Relay::PB5, LOW);
+        myRelay.digitalWrite(STM32Relay::PB3, LOW, 0x42);
     }
 #endif
 
@@ -214,9 +216,11 @@ void configureSlave()
 #endif
 
     // Send all setup commands
-    myRelay.pinMode(STM32Relay::PB5, OUTPUT, 0x42);
-    myRelay.pinMode(STM32Relay::PB6, INPUT_PULLUP, 0x42);
-    myRelay.digitalWrite(STM32Relay::PB5, LOW, 0x42);
+    myRelay.pinMode(STM32Relay::PB3, OUTPUT, 0x42);
+    myRelay.digitalWrite(STM32Relay::PB3, 0, 0x42);
+
+    myRelay.pinMode(STM32Relay::PB1, INPUT_PULLUP, 0x42);
+
 
     // ... any other configuration
 

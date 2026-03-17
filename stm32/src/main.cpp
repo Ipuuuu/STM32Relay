@@ -39,6 +39,7 @@ void loop(){
     handler.recover(); // For I2C slave, recover if stuck
     handler.processIncomingBytes();
 
+
     // Optional: Could clear reset flag after some time if no heartbeat received
     // But better to let master clear it after reconfiguration
 }
